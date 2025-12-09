@@ -35,12 +35,71 @@ export class DialogController<C> implements Ctrl<C> {
 
   async #openDialog(baseConfig: BaseDialogConfig<C>): Promise<any> {
     const targetContainer = document.body;
+    const customDialogTagName = CustomDialog.prepare();
+
+    const dialogElem = document.createElement(customDialogTagName);
+    targetContainer.append(dialogElem);
+    console.log(dialogElem);
   }
 }
 
 // =================================================================
-// Contents
+// Dialog custom element
 // =================================================================
+
+class CustomDialog extends HTMLElement {
+  static #tagName = "internal-dialog-" + Date.now();
+
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this.shadowRoot!.adoptedStyleSheets = [dialogStyles];
+
+    const content = html`
+      <dialog>
+        <div class="header">
+          <div class="titles">
+            <div slot="title" class="title">Add user</div>
+            <div slot="subtitle" class="subtitle">
+              Please enter ther user's data
+            </div>
+          </div>
+          <div slot="close-button">
+            <button class="close-button">${closeIcon.getSvgText()}</button>
+          </div>
+        </div>
+        <div class="body">
+          <div slot="intro" class="intro">Intro</div>
+          <div slot="content" class="content">Content</div>
+          <div slot="outro" class="outro">Outro</div>
+        </div>
+        <div class="footer">
+          <div slot="buttons" class="buttons">
+            <button class="secondary">Cancel</button>
+            <button class="primary">Add user</button>
+          </div>
+        </div>
+      </dialog>
+    `;
+
+    const dialogElem = htmlElement<HTMLDialogElement>(content.asString());
+    this.shadowRoot!.append(dialogElem);
+
+    setTimeout(() => {
+      dialogElem.showModal();
+    }, 300);
+  }
+
+  connectedCallback() {}
+
+  static prepare(): string {
+    if (!customElements.get(CustomDialog.#tagName)) {
+      customElements.define(CustomDialog.#tagName, CustomDialog);
+    }
+
+    return CustomDialog.#tagName;
+  }
+}
 
 // =================================================================
 // Utilities
@@ -80,7 +139,9 @@ class HtmlContent {
 
   constructor(htmlText: string) {
     this.#htmlText =
-      htmlText === null || htmlText === undefined ? "" : String(htmlText);
+      htmlText === null || htmlText === undefined
+        ? ""
+        : String(htmlText).trim();
   }
 
   asString() {
@@ -92,7 +153,7 @@ class HtmlContent {
   }
 }
 
-function html(strings: string[], ...values: string[]) {
+function html(strings: TemplateStringsArray, ...values: string[]) {
   const tokens: unknown[] = [];
 
   const handleValue = (value: unknown) => {
@@ -121,7 +182,7 @@ function html(strings: string[], ...values: string[]) {
 
 html.raw = (htmlText: string) => new HtmlContent(htmlText);
 
-function htmlElement(htmlText: string) {
+function htmlElement<T = HTMLElement>(htmlText: string) {
   const elem = document.createElement("div");
   elem.innerHTML = htmlText;
 
@@ -129,7 +190,7 @@ function htmlElement(htmlText: string) {
     throw new Error("Must have exactly one root element");
   }
 
-  return elem.firstElementChild;
+  return elem.firstElementChild as T;
 }
 
 function toHtmlContent(htmlContentOrPlainText: HtmlContent | string) {
@@ -154,7 +215,7 @@ class SvgContent {
   }
 }
 
-function svg(strings: string[], ...values: unknown[]) {
+function svg(strings: TemplateStringsArray, ...values: unknown[]) {
   const text = strings.reduce(
     (result, str, i) => `${result}${str}${values[i] || ""}`,
     "",
@@ -168,11 +229,22 @@ function svg(strings: string[], ...values: unknown[]) {
 // =================================================================
 
 class CssContent {
-  #cssText;
+  #cssText: string;
+  #styleSheet: CSSStyleSheet | null = null;
 
   constructor(cssText: String) {
     this.#cssText =
       cssText === null || cssText === undefined ? "" : String(cssText);
+  }
+
+  asStyleSheet() {
+    if (this.#styleSheet) {
+      return this.#styleSheet;
+    }
+
+    this.#styleSheet = new CSSStyleSheet();
+    this.#styleSheet.replaceSync(this.#cssText);
+    return this.#styleSheet;
   }
 
   getCssText() {
@@ -219,3 +291,122 @@ function addStyles(cssContent: CssContent, target = document) {
     );
   };
 }
+
+// =================================================================
+// Styles
+// =================================================================
+
+const theme = {
+  primaryColor: "blue",
+  borderColor: "#eee",
+  borderRadius: "4px",
+  textColor: "lightDark(black, white)",
+  dialogBackgroundColor: "lightDark(white, #333)",
+};
+
+const dialogStyles = css`
+  dialog {
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: ${theme.textColor};
+    background-color: ${theme.dialogBackgroundColor};
+    border: 1px solid ${theme.borderColor};
+    border-radius: ${theme.borderRadius};
+    min-width: 20em;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;
+
+    &::backdrop {
+      background: rgba(0, 0, 0, 0.4); /* 40% black */
+      backdrop-filter: blur(2px); /* optional: adds a soft blur */
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-start;
+      gap: 1em;
+      padding: 0.5em 1em;
+      width: 100%;
+      box-sizing: border-box;
+
+      .titles {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        padding: 0.25em 0;
+        gap: 0.125em;
+
+        .title {
+        }
+
+        .subtitle {
+          font-size: 0.85em;
+          line-height: 0.85em;
+        }
+      }
+
+      .close-button {
+        border: none;
+        outline: none;
+        border-radius: 2px;
+        padding: 0.125em;
+        margin: 0;
+        font-size: 1em;
+        line-height: 0;
+        background-color: transparent;
+        cursor: pointer;
+        opacity: 0.5;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+    }
+
+    .body {
+      padding: 0.5em 1em;
+    }
+
+    .footer {
+      padding: 0.5em 1em;
+
+      .buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.4em;
+
+        button {
+          outline: none;
+          border: none;
+          padding: 0.25em 0.5em;
+          border-radius: 3px;
+          padding: 0.5em 0.75em;
+
+          &.primary {
+            color: white;
+            background-color: #479ef5;
+          }
+
+          &.secondary {
+            color: black;
+            background-color: #eee;
+          }
+        }
+      }
+    }
+  }
+`.asStyleSheet();
+
+// =================================================================
+// Icons
+// =================================================================
+
+const closeIcon = svg`
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+    <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+  </svg>
+`;
