@@ -312,24 +312,24 @@ const dialogStyles = css`
     transform: translate(-50%, -50%);
     color: ${theme.textColor};
     background-color: ${theme.dialogBackgroundColor};
-    border: 1px solid ${theme.borderColor};
+    border: none;
     border-radius: ${theme.borderRadius};
-    min-width: 20em;
+    outline: none;
+    min-width: 25em;
     box-sizing: border-box;
     padding: 0;
     margin: 0;
-    box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;
 
     &::backdrop {
-      background: rgba(0, 0, 0, 0.4); /* 40% black */
-      backdrop-filter: blur(2px); /* optional: adds a soft blur */
+      background: rgba(0, 0, 0, 0.15);
+      backdrop-filter: blur(3px);
     }
 
     .header {
       display: flex;
       align-items: flex-start;
       gap: 1em;
-      padding: 0.5em 1em;
+      padding: 0.75em 1.25em;
       width: 100%;
       box-sizing: border-box;
 
@@ -341,6 +341,7 @@ const dialogStyles = css`
         gap: 0.125em;
 
         .title {
+          font-size: 1.15em;
         }
 
         .subtitle {
@@ -352,27 +353,38 @@ const dialogStyles = css`
       .close-button {
         border: none;
         outline: none;
-        border-radius: 2px;
-        padding: 0.125em;
+        border-radius: 3px;
+        padding: 0.3em;
         margin: 0;
         font-size: 1em;
         line-height: 0;
         background-color: transparent;
         cursor: pointer;
-        opacity: 0.5;
 
         &:hover {
-          opacity: 1;
+          background-color: light-dark(
+            color-mix(in srgb, #f0f0f0, black 10%),
+            color-mix(in srgb, #f0f0f0, white 10%)
+          );
+        }
+
+        &:active {
+          background-color: light-dark(
+            color-mix(in srgb, #f0f0f0, black 20%),
+            color-mix(in srgb, #f0f0f0, white 20%)
+          );
         }
       }
     }
 
     .body {
-      padding: 0.5em 1em;
+      padding: 0.75em 1.25em;
+      min-height: 4em;
     }
 
     .footer {
-      padding: 0.5em 1em;
+      padding: 0.75em 1em;
+      user-select: none;
 
       .buttons {
         display: flex;
@@ -385,15 +397,44 @@ const dialogStyles = css`
           padding: 0.25em 0.5em;
           border-radius: 3px;
           padding: 0.5em 0.75em;
+          cursor: pointer;
 
           &.primary {
             color: white;
             background-color: #479ef5;
+
+            &:hover {
+              background-color: light-dark(
+                color-mix(in srgb, #479ef5, black 15%),
+                color-mix(in srgb, #479ef5, white 15%)
+              );
+            }
+
+            &:active {
+              background-color: light-dark(
+                color-mix(in srgb, #479ef5, black 25%),
+                color-mix(in srgb, #479ef5, white 25%)
+              );
+            }
           }
 
           &.secondary {
             color: black;
             background-color: #eee;
+
+            &:hover {
+              background-color: light-dark(
+                color-mix(in srgb, #eee, black 10%),
+                color-mix(in srgb, #eee, white 10%)
+              );
+            }
+
+            &:active {
+              background-color: light-dark(
+                color-mix(in srgb, #eee, black 20%),
+                color-mix(in srgb, #eee, white 20%)
+              );
+            }
           }
         }
       }
