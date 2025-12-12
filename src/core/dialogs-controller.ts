@@ -1,7 +1,10 @@
+export { html, DialogController };
+
 type Renderable<C> = C | string | number | null | undefined;
 
 interface BaseDialogConfig<C> {
   title?: Renderable<C>;
+  subtitle?: Renderable<C>;
   intro?: Renderable<C>;
   content?: Renderable<C>;
   outro?: Renderable<C>;
@@ -16,30 +19,109 @@ interface Ctrl<C> {
   error(config: MessageDialogConfig<C>): Promise<void>;
 }
 
-export class DialogController<C> implements Ctrl<C> {
+interface ButtonConfig {
+  id: Symbol;
+  appearance: "primary" | "secondary" | "danger";
+  text: string;
+}
+
+class DialogController<C> implements Ctrl<C> {
+  readonly #okBtn: ButtonConfig = {
+    id: Symbol("ok"),
+    appearance: "primary",
+    text: "Ok",
+  };
+
+  readonly #okBtnDanger: ButtonConfig = {
+    id: Symbol("ok"),
+    appearance: "danger",
+    text: "Ok",
+  };
+
+  readonly #cancelBtn: ButtonConfig = {
+    id: Symbol("cancel"),
+    appearance: "secondary",
+    text: "Cancel",
+  };
+
   async info(config: MessageDialogConfig<C>): Promise<void> {
-    await this.#openDialog(config);
+    await this.#openDialog(config, [this.#okBtn]);
   }
 
   async success(config: MessageDialogConfig<C>): Promise<void> {
-    await this.#openDialog(config);
+    await this.#openDialog(config, [this.#okBtn]);
   }
 
   async warn(config: MessageDialogConfig<C>): Promise<void> {
-    await this.#openDialog(config);
+    await this.#openDialog(config, [this.#okBtn]);
   }
 
   async error(config: MessageDialogConfig<C>): Promise<void> {
-    await this.#openDialog(config);
+    await this.#openDialog(config, [this.#okBtn]);
   }
 
-  async #openDialog(baseConfig: BaseDialogConfig<C>): Promise<any> {
+  async approve(config: MessageDialogConfig<C>): Promise<void> {
+    await this.#openDialog(config, [this.#okBtnDanger, this.#cancelBtn]);
+  }
+
+  async #openDialog(
+    baseConfig: BaseDialogConfig<C>,
+    buttons: ButtonConfig[],
+  ): Promise<any> {
     const targetContainer = document.body;
     const customDialogTagName = CustomDialog.prepare();
 
-    const dialogElem = document.createElement(customDialogTagName);
+    const dialogElem = h(customDialogTagName, { className: "dlg-dialog" });
+
+    const closeButton = h("button", { className: "dlg-dialog__close-button" });
+
+    closeButton.innerHTML = closeIcon.getSvgText();
+    const closeButtonContainer = h(
+      "div",
+      { slot: "close-button" },
+      closeButton,
+    );
+    dialogElem.append(closeButtonContainer);
+
+    for (const key of [
+      "title",
+      "subtitle",
+      "intro",
+      "content",
+      "outro",
+    ] as const) {
+      const renderable = baseConfig[key];
+
+      if (renderable) {
+        const elem = h<HTMLDivElement>("div");
+
+        if (renderable instanceof HtmlContent) {
+          elem.innerHTML = renderable.asString();
+        } else {
+          elem.innerText = renderable.toString();
+        }
+
+        const content = h("div", { slot: key }, elem);
+
+        dialogElem.append(content);
+      }
+    }
+
+    for (const buttonConfig of buttons) {
+      const buttonContainer = h(
+        "button",
+        {
+          className: "dlg-dialog__action-button",
+          slot: "button",
+          "data-appearance": buttonConfig.appearance,
+        },
+        buttonConfig.text,
+      );
+
+      dialogElem.append(buttonContainer);
+    }
+
     targetContainer.append(dialogElem);
-    console.log(dialogElem);
   }
 }
 
@@ -48,7 +130,7 @@ export class DialogController<C> implements Ctrl<C> {
 // =================================================================
 
 class CustomDialog extends HTMLElement {
-  static #tagName = "internal-dialog-" + Date.now();
+  static readonly #tagName = "internal-dialog-" + Date.now();
 
   constructor() {
     super();
@@ -59,25 +141,18 @@ class CustomDialog extends HTMLElement {
       <dialog>
         <div class="header">
           <div class="titles">
-            <div slot="title" class="title">Add user</div>
-            <div slot="subtitle" class="subtitle">
-              Please enter ther user's data
-            </div>
+            <slot name="title" class="title"></slot>
+            <slot name="subtitle" class="subtitle"></slot>
           </div>
-          <div slot="close-button">
-            <button class="close-button">${closeIcon.getSvgText()}</button>
-          </div>
+          <slot name="close-button"></slot>
         </div>
         <div class="body">
-          <div slot="intro" class="intro">Intro</div>
-          <div slot="content" class="content">Content</div>
-          <div slot="outro" class="outro">Outro</div>
+          <slot name="intro" class="intro"></slot>
+          <slot name="content" class="content"></slot>
+          <slot name="outro" class="outro"></slot>
         </div>
         <div class="footer">
-          <div slot="buttons" class="buttons">
-            <button class="secondary">Cancel</button>
-            <button class="primary">Add user</button>
-          </div>
+          <slot name="button" class="buttons"></slot>
         </div>
       </dialog>
     `;
@@ -97,6 +172,10 @@ class CustomDialog extends HTMLElement {
       customElements.define(CustomDialog.#tagName, CustomDialog);
     }
 
+    document.adoptedStyleSheets = [
+      ...document.adoptedStyleSheets,
+      globalStyles.asStyleSheet(),
+    ];
     return CustomDialog.#tagName;
   }
 }
@@ -133,6 +212,34 @@ function isIterable(value: unknown): value is Iterable<unknown> {
 // =================================================================
 // HTML
 // =================================================================
+
+function h<T extends Element = Element>(
+  tagName: string,
+  attrs?: Record<string, unknown> | null,
+  ...children: (Node | string | null | undefined)[]
+): T {
+  const ret = document.createElement(tagName);
+
+  if (attrs) {
+    Object.keys(attrs).forEach((key) => {
+      if (key in ret) {
+        (ret as any)[key] = attrs[key];
+      } else {
+        ret.setAttribute(key, String(attrs[key]));
+      }
+    });
+  }
+
+  if (children) {
+    for (const child of children) {
+      if (child) {
+        ret.append(child);
+      }
+    }
+  }
+
+  return ret as unknown as T;
+}
 
 class HtmlContent {
   #htmlText;
@@ -297,12 +404,118 @@ function addStyles(cssContent: CssContent, target = document) {
 // =================================================================
 
 const theme = {
-  primaryColor: "blue",
+  primaryTextColor: "white",
+  primaryBackgroundColor: "blue",
+  secondaryTextColor: "black",
+  secondaryBackgroundColor: "white",
+  secondaryBorderColor: "#b0b0b0",
+  dangerTextColor: "white",
+  dangerBackgroundColor: "#BE4545FF",
   borderColor: "#eee",
   borderRadius: "4px",
   textColor: "lightDark(black, white)",
   dialogBackgroundColor: "lightDark(white, #333)",
 };
+
+const globalStyles = css`
+  .dlg-dialog {
+    border: 2px solid red;
+    font-size: 16px;
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+      sans-serif;
+  }
+
+  .dlg-dialog__action-button {
+    outline: none;
+    border: none;
+    border-radius: 3px;
+    padding: 0.5em 1.5em;
+    cursor: pointer;
+
+    &[data-appearance="primary"] {
+      color: ${theme.primaryTextColor};
+      background-color: ${theme.primaryBackgroundColor};
+
+      &::hover {
+        background-color: color-mix(
+          in srgb,
+          ${theme.primaryBackgroundColor},
+          black 10%
+        );
+      }
+    }
+
+    &[data-appearance="secondary"] {
+      color: ${theme.secondaryTextColor};
+      background-color: ${theme.secondaryBackgroundColor};
+      border: 1px solid ${theme.secondaryBorderColor};
+
+      &:hover {
+        background-color: color-mix(
+          in srgb,
+          ${theme.secondaryBackgroundColor},
+          black 5%
+        );
+      }
+
+      &:active {
+        background-color: color-mix(
+          in srgb,
+          ${theme.secondaryBackgroundColor},
+          black 10%
+        );
+      }
+    }
+
+    &[data-appearance="danger"] {
+      color: ${theme.dangerTextColor};
+      background-color: ${theme.dangerBackgroundColor};
+
+      &:hover {
+        background-color: color-mix(
+          in srgb,
+          ${theme.dangerBackgroundColor},
+          black 15%
+        );
+      }
+
+      &:active {
+        background-color: color-mix(
+          in srgb,
+          ${theme.dangerBackgroundColor},
+          black 40%
+        );
+      }
+    }
+  }
+
+  .dlg-dialog__close-button {
+    border: none;
+    outline: none;
+    border-radius: 3px;
+    padding: 0.3em;
+    margin: 0;
+    font-size: 1em;
+    line-height: 0;
+    background-color: transparent;
+    cursor: pointer;
+
+    &:hover {
+      background-color: light-dark(
+        color-mix(in srgb, white, black 10%),
+        color-mix(in srgb, black, white 10%)
+      );
+    }
+
+    &:active {
+      background-color: light-dark(
+        color-mix(in srgb, #f0f0f0, black 20%),
+        color-mix(in srgb, #f0f0f0, white 20%)
+      );
+    }
+  }
+`;
 
 const dialogStyles = css`
   dialog {
@@ -341,45 +554,30 @@ const dialogStyles = css`
         gap: 0.125em;
 
         .title {
+          display: block;
           font-size: 1.15em;
         }
 
         .subtitle {
-          font-size: 0.85em;
+          display: block;
+          font-size: 0.9em;
           line-height: 0.85em;
-        }
-      }
-
-      .close-button {
-        border: none;
-        outline: none;
-        border-radius: 3px;
-        padding: 0.3em;
-        margin: 0;
-        font-size: 1em;
-        line-height: 0;
-        background-color: transparent;
-        cursor: pointer;
-
-        &:hover {
-          background-color: light-dark(
-            color-mix(in srgb, #f0f0f0, black 10%),
-            color-mix(in srgb, #f0f0f0, white 10%)
-          );
-        }
-
-        &:active {
-          background-color: light-dark(
-            color-mix(in srgb, #f0f0f0, black 20%),
-            color-mix(in srgb, #f0f0f0, white 20%)
-          );
         }
       }
     }
 
     .body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5em;
       padding: 0.75em 1.25em;
       min-height: 4em;
+
+      .intro,
+      .content,
+      .outro {
+        display: block;
+      }
     }
 
     .footer {
@@ -388,7 +586,7 @@ const dialogStyles = css`
 
       .buttons {
         display: flex;
-        justify-content: flex-end;
+        flex-direction: row-reverse;
         gap: 0.4em;
 
         button {

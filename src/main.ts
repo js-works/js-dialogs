@@ -1,5 +1,5 @@
 import "./style.css";
-import { DialogController } from "./core/dialogs-controller.ts";
+import { html, DialogController } from "./core/dialogs-controller.ts";
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div>
@@ -9,10 +9,6 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 
 const dialogs = new DialogController();
 
-dialogs.info({
-  title: "the title",
-});
-
 document.querySelector<HTMLButtonElement>("#btn")!.onclick = () => {
   const dialogs = new DialogController();
 
@@ -20,3 +16,11 @@ document.querySelector<HTMLButtonElement>("#btn")!.onclick = () => {
     title: "the title",
   });
 };
+
+dialogs.approve({
+  title: "Warning",
+  subtitle: "Deleting project",
+  intro: html`<b>The following information is very important:</b>`,
+  content: "Deleting the project cannot be undone!",
+  outro: "Do you still want to delte the project?",
+});
