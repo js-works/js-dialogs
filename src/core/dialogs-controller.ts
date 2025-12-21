@@ -12,11 +12,29 @@ interface BaseDialogConfig<C> {
 
 interface MessageDialogConfig<C> extends BaseDialogConfig<C> {}
 
+interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {}
+
+interface PromptDialogConfig<C> extends BaseDialogConfig<C> {
+  label?: Renderable<C>;
+}
+
 interface Ctrl<C> {
-  info(config: MessageDialogConfig<C>): Promise<void>;
-  success(config: MessageDialogConfig<C>): Promise<void>;
-  warn(config: MessageDialogConfig<C>): Promise<void>;
-  error(config: MessageDialogConfig<C>): Promise<void>;
+  info(config: MessageDialogConfig<C>): Promise<Result>;
+  success(config: MessageDialogConfig<C>): Promise<Result>;
+  warn(config: MessageDialogConfig<C>): Promise<Result>;
+  error(config: MessageDialogConfig<C>): Promise<Result>;
+  confirm(config: ConfirmDialogConfig<C>): Promise<Result>;
+  approve(config: ConfirmDialogConfig<C>): Promise<Result>;
+  prompt(config: PromptDialogConfig<C>): Promise<Result<string | null>>;
+}
+
+type DialogType = "info" | "success" | "warn" | "error" | "confirm" | "approve";
+
+interface Result<T = null> {
+  readonly confirmed: boolean;
+  readonly denied: boolean;
+  readonly cancelled: boolean;
+  data: T;
 }
 
 interface ButtonConfig {
@@ -26,59 +44,130 @@ interface ButtonConfig {
 }
 
 class DialogController<C> implements Ctrl<C> {
+  static readonly #symbolClose = Symbol("close");
+  static readonly #symbolOk = Symbol("ok");
+  static readonly #symbolDecline = Symbol("decline");
+
   readonly #okBtn: ButtonConfig = {
-    id: Symbol("ok"),
+    id: DialogController.#symbolOk,
     appearance: "primary",
     text: "Ok",
   };
 
   readonly #okBtnDanger: ButtonConfig = {
-    id: Symbol("ok"),
+    id: DialogController.#symbolOk,
     appearance: "danger",
     text: "Ok",
   };
 
-  readonly #cancelBtn: ButtonConfig = {
-    id: Symbol("cancel"),
+  readonly #declineBtn: ButtonConfig = {
+    id: DialogController.#symbolDecline,
     appearance: "secondary",
     text: "Cancel",
   };
 
-  async info(config: MessageDialogConfig<C>): Promise<void> {
-    await this.#openDialog(config, [this.#okBtn]);
+  async info(config: MessageDialogConfig<C>): Promise<Result> {
+    return this.#openDialog("info", config, null, [this.#okBtn]);
   }
 
-  async success(config: MessageDialogConfig<C>): Promise<void> {
-    await this.#openDialog(config, [this.#okBtn]);
+  async success(config: MessageDialogConfig<C>): Promise<Result> {
+    return this.#openDialog("success", config, null, [this.#okBtn]);
   }
 
-  async warn(config: MessageDialogConfig<C>): Promise<void> {
-    await this.#openDialog(config, [this.#okBtn]);
+  async warn(config: MessageDialogConfig<C>): Promise<Result> {
+    return this.#openDialog("warn", config, null, [this.#okBtn]);
   }
 
-  async error(config: MessageDialogConfig<C>): Promise<void> {
-    await this.#openDialog(config, [this.#okBtn]);
+  async error(config: MessageDialogConfig<C>): Promise<Result> {
+    return this.#openDialog("error", config, null, [this.#okBtnDanger]);
   }
 
-  async approve(config: MessageDialogConfig<C>): Promise<void> {
-    await this.#openDialog(config, [this.#okBtnDanger, this.#cancelBtn]);
+  async confirm(config: ConfirmDialogConfig<C>): Promise<Result> {
+    return this.#openDialog("confirm", config, null, [
+      this.#okBtn,
+      this.#declineBtn,
+    ]);
+  }
+
+  async approve(config: ConfirmDialogConfig<C>): Promise<Result> {
+    return this.#openDialog("approve", config, null, [
+      this.#okBtnDanger,
+      this.#declineBtn,
+    ]);
+  }
+
+  async prompt(config: PromptDialogConfig<C>): Promise<Result<string | null>> {
+    const extraContent = htmlElement(
+      html`
+        <label class="dlg-dialog__prompt-label">
+          ${config.label?.toString() || ""}
+          <input name="input" class="dlg-dialog__prompt-input" />
+        </label>
+      `.asString(),
+    );
+
+    return this.#openDialog("approve", config, extraContent as any, [
+      this.#okBtn,
+      this.#declineBtn,
+    ]);
   }
 
   async #openDialog(
+    dialogType: DialogType,
     baseConfig: BaseDialogConfig<C>,
+    extraContent: Renderable<C>,
     buttons: ButtonConfig[],
   ): Promise<any> {
     const targetContainer = document.body;
     const customDialogTagName = CustomDialog.prepare();
 
-    const dialogElem = h(customDialogTagName, { className: "dlg-dialog" });
+    let setResult: any;
+    let setError: any;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      setResult = resolve;
+      setError = reject;
+    });
+
+    const onButtonClicked = (id: Symbol) => {
+      dialogElem.remove();
+
+      switch (dialogType) {
+        case "info":
+        case "success":
+        case "warn":
+        case "error":
+          setResult({
+            confirmed: id === DialogController.#symbolOk,
+            cancelled: false,
+            closed: id === DialogController.#symbolClose,
+          });
+          break;
+        case "confirm":
+        case "approve":
+          setResult({
+            confirmed: id === DialogController.#symbolOk,
+            cancelled: id !== DialogController.#symbolOk,
+            closed: id === DialogController.#symbolClose,
+          });
+          break;
+      }
+    };
+
+    const dialogElem = h(customDialogTagName, {
+      className: "dlg-dialog",
+      onclose: () => alert(1),
+    });
 
     const closeButton = h("button", { className: "dlg-dialog__close-button" });
 
     closeButton.innerHTML = closeIcon.getSvgText();
     const closeButtonContainer = h(
       "div",
-      { slot: "close-button" },
+      {
+        slot: "close-button",
+        onclick: () => onButtonClicked(DialogController.#symbolClose),
+      },
       closeButton,
     );
     dialogElem.append(closeButtonContainer);
@@ -104,16 +193,26 @@ class DialogController<C> implements Ctrl<C> {
         const content = h("div", { slot: key }, elem);
 
         dialogElem.append(content);
+
+        if (key === "content") {
+          const extra = h("div", { slot: "extra-content" }, elem);
+          console.log(extraContent);
+          extra.append(extraContent as any); // TODO!
+          dialogElem.append(extra);
+        }
       }
     }
 
     for (const buttonConfig of buttons) {
+      const onClick = () => onButtonClicked(buttonConfig.id);
+
       const buttonContainer = h(
         "button",
         {
           className: "dlg-dialog__action-button",
           slot: "button",
           "data-appearance": buttonConfig.appearance,
+          onclick: onClick,
         },
         buttonConfig.text,
       );
@@ -122,6 +221,7 @@ class DialogController<C> implements Ctrl<C> {
     }
 
     targetContainer.append(dialogElem);
+    return resultPromise;
   }
 }
 
@@ -149,6 +249,7 @@ class CustomDialog extends HTMLElement {
         <div class="body">
           <slot name="intro" class="intro"></slot>
           <slot name="content" class="content"></slot>
+          <slot name="extra-content" class="extra-content"></slot>
           <slot name="outro" class="outro"></slot>
         </div>
         <div class="footer">
@@ -260,7 +361,7 @@ class HtmlContent {
   }
 }
 
-function html(strings: TemplateStringsArray, ...values: string[]) {
+function html(strings: TemplateStringsArray, ...values: (string | null)[]) {
   const tokens: unknown[] = [];
 
   const handleValue = (value: unknown) => {
@@ -405,7 +506,7 @@ function addStyles(cssContent: CssContent, target = document) {
 
 const theme = {
   primaryTextColor: "white",
-  primaryBackgroundColor: "blue",
+  primaryBackgroundColor: "oklch(50% 0.134 242.749)",
   secondaryTextColor: "black",
   secondaryBackgroundColor: "white",
   secondaryBorderColor: "#b0b0b0",
@@ -419,11 +520,20 @@ const theme = {
 
 const globalStyles = css`
   .dlg-dialog {
-    border: 2px solid red;
     font-size: 16px;
     font-family:
       -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
       sans-serif;
+  }
+
+  .dlg-dialog__prompt-label {
+    font-weight: 600;
+    font-size: 80%;
+  }
+
+  .dlg-dialog__prompt-input {
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .dlg-dialog__action-button {
@@ -534,8 +644,8 @@ const dialogStyles = css`
     margin: 0;
 
     &::backdrop {
-      background: rgba(0, 0, 0, 0.15);
-      backdrop-filter: blur(3px);
+      background: rgba(0, 0, 0, 0.7);
+      xxbackdrop-filter: blur(1.5px);
     }
 
     .header {
@@ -581,7 +691,8 @@ const dialogStyles = css`
     }
 
     .footer {
-      padding: 0.75em 1em;
+      background-color: #f4f4f4;
+      padding: 0.5em 1em;
       user-select: none;
 
       .buttons {
