@@ -43,10 +43,28 @@ interface ButtonConfig {
   text: string;
 }
 
+interface DialogControllerConfig {
+  renderCloseButton?: (text: string, onClick: () => void) => HTMLElement;
+
+  renderActionButton?: (
+    appearance: "primary" | "secondary" | "danger",
+    text: string,
+    onClick: () => void,
+  ) => HTMLElement;
+
+  renderPromptInput?: (
+    label: string,
+    value: string,
+    update: (value: string) => void,
+  ) => void;
+}
+
 class DialogController<C> implements Ctrl<C> {
   static readonly #symbolClose = Symbol("close");
   static readonly #symbolOk = Symbol("ok");
   static readonly #symbolDecline = Symbol("decline");
+
+  readonly #config: DialogControllerConfig;
 
   readonly #okBtn: ButtonConfig = {
     id: DialogController.#symbolOk,
@@ -65,6 +83,10 @@ class DialogController<C> implements Ctrl<C> {
     appearance: "secondary",
     text: "Cancel",
   };
+
+  constructor(config: DialogControllerConfig) {
+    this.#config = config;
+  }
 
   async info(config: MessageDialogConfig<C>): Promise<Result> {
     return this.#openDialog("info", config, null, [this.#okBtn]);
@@ -99,9 +121,9 @@ class DialogController<C> implements Ctrl<C> {
   async prompt(config: PromptDialogConfig<C>): Promise<Result<string | null>> {
     const extraContent = htmlElement(
       html`
-        <label class="dlg-dialog__prompt-label">
+        <label class="prompt-label">
           ${config.label?.toString() || ""}
-          <input name="input" class="dlg-dialog__prompt-input" />
+          <input name="input" class="prompt-input" />
         </label>
       `.asString(),
     );
@@ -155,22 +177,21 @@ class DialogController<C> implements Ctrl<C> {
     };
 
     const dialogElem = h(customDialogTagName, {
-      className: "dlg-dialog",
       onclose: () => alert(1),
     });
 
-    const closeButton = h("button", { className: "dlg-dialog__close-button" });
-
-    closeButton.innerHTML = closeIcon.getSvgText();
-    const closeButtonContainer = h(
-      "div",
-      {
-        slot: "close-button",
+    if (!this.#config.renderCloseButton) {
+      const closeButton = h("button", {
+        className: "close-button",
         onclick: () => onButtonClicked(DialogController.#symbolClose),
-      },
-      closeButton,
-    );
-    dialogElem.append(closeButtonContainer);
+      });
+
+      closeButton.innerHTML = closeIcon.getSvgText();
+
+      dialogElem
+        .shadowRoot!.querySelector("slot[name=close-button]")!
+        .append(closeButton);
+    }
 
     for (const key of [
       "title",
@@ -195,29 +216,38 @@ class DialogController<C> implements Ctrl<C> {
         dialogElem.append(content);
 
         if (key === "content") {
-          const extra = h("div", { slot: "extra-content" }, elem);
-          console.log(extraContent);
-          extra.append(extraContent as any); // TODO!
-          dialogElem.append(extra);
+          if (this.#config.renderPromptInput) {
+            // TODO
+          } else {
+            const extra = h("div", null, elem);
+            extra.append(extraContent as any); // TODO!
+            dialogElem
+              .shadowRoot!.querySelector("slot[name=extra-content]")!
+              .append(extra);
+          }
         }
       }
     }
 
-    for (const buttonConfig of buttons) {
-      const onClick = () => onButtonClicked(buttonConfig.id);
+    if (!this.#config.renderActionButton) {
+      const buttonContainer =
+        dialogElem.shadowRoot!.querySelector("slot[name=button]")!;
 
-      const buttonContainer = h(
-        "button",
-        {
-          className: "dlg-dialog__action-button",
-          slot: "button",
-          "data-appearance": buttonConfig.appearance,
-          onclick: onClick,
-        },
-        buttonConfig.text,
-      );
+      for (const buttonConfig of buttons) {
+        const onClick = () => onButtonClicked(buttonConfig.id);
 
-      dialogElem.append(buttonContainer);
+        const button = h(
+          "button",
+          {
+            className: "action-button",
+            "data-appearance": buttonConfig.appearance,
+            onclick: onClick,
+          },
+          buttonConfig.text,
+        );
+
+        buttonContainer.append(button);
+      }
     }
 
     targetContainer.append(dialogElem);
@@ -239,21 +269,23 @@ class CustomDialog extends HTMLElement {
 
     const content = html`
       <dialog>
-        <div class="header">
-          <div class="titles">
-            <slot name="title" class="title"></slot>
-            <slot name="subtitle" class="subtitle"></slot>
+        <div class="dialog-content">
+          <div class="header">
+            <div class="titles">
+              <slot name="title" class="title"></slot>
+              <slot name="subtitle" class="subtitle"></slot>
+            </div>
+            <slot name="close-button"></slot>
           </div>
-          <slot name="close-button"></slot>
-        </div>
-        <div class="body">
-          <slot name="intro" class="intro"></slot>
-          <slot name="content" class="content"></slot>
-          <slot name="extra-content" class="extra-content"></slot>
-          <slot name="outro" class="outro"></slot>
-        </div>
-        <div class="footer">
-          <slot name="button" class="buttons"></slot>
+          <div class="body">
+            <slot name="intro" class="intro"></slot>
+            <slot name="content" class="content"></slot>
+            <slot name="extra-content" class="extra-content"></slot>
+            <slot name="outro" class="outro"></slot>
+          </div>
+          <div class="footer">
+            <slot name="button" class="buttons"></slot>
+          </div>
         </div>
       </dialog>
     `;
@@ -518,114 +550,7 @@ const theme = {
   dialogBackgroundColor: "lightDark(white, #333)",
 };
 
-const globalStyles = css`
-  .dlg-dialog {
-    font-size: 16px;
-    font-family:
-      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
-      sans-serif;
-  }
-
-  .dlg-dialog__prompt-label {
-    font-weight: 600;
-    font-size: 80%;
-  }
-
-  .dlg-dialog__prompt-input {
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .dlg-dialog__action-button {
-    outline: none;
-    border: none;
-    border-radius: 3px;
-    padding: 0.5em 1.5em;
-    cursor: pointer;
-
-    &[data-appearance="primary"] {
-      color: ${theme.primaryTextColor};
-      background-color: ${theme.primaryBackgroundColor};
-
-      &::hover {
-        background-color: color-mix(
-          in srgb,
-          ${theme.primaryBackgroundColor},
-          black 10%
-        );
-      }
-    }
-
-    &[data-appearance="secondary"] {
-      color: ${theme.secondaryTextColor};
-      background-color: ${theme.secondaryBackgroundColor};
-      border: 1px solid ${theme.secondaryBorderColor};
-
-      &:hover {
-        background-color: color-mix(
-          in srgb,
-          ${theme.secondaryBackgroundColor},
-          black 5%
-        );
-      }
-
-      &:active {
-        background-color: color-mix(
-          in srgb,
-          ${theme.secondaryBackgroundColor},
-          black 10%
-        );
-      }
-    }
-
-    &[data-appearance="danger"] {
-      color: ${theme.dangerTextColor};
-      background-color: ${theme.dangerBackgroundColor};
-
-      &:hover {
-        background-color: color-mix(
-          in srgb,
-          ${theme.dangerBackgroundColor},
-          black 15%
-        );
-      }
-
-      &:active {
-        background-color: color-mix(
-          in srgb,
-          ${theme.dangerBackgroundColor},
-          black 40%
-        );
-      }
-    }
-  }
-
-  .dlg-dialog__close-button {
-    border: none;
-    outline: none;
-    border-radius: 3px;
-    padding: 0.3em;
-    margin: 0;
-    font-size: 1em;
-    line-height: 0;
-    background-color: transparent;
-    cursor: pointer;
-
-    &:hover {
-      background-color: light-dark(
-        color-mix(in srgb, white, black 10%),
-        color-mix(in srgb, black, white 10%)
-      );
-    }
-
-    &:active {
-      background-color: light-dark(
-        color-mix(in srgb, #f0f0f0, black 20%),
-        color-mix(in srgb, #f0f0f0, white 20%)
-      );
-    }
-  }
-`;
+const globalStyles = css``;
 
 const dialogStyles = css`
   dialog {
@@ -691,62 +616,123 @@ const dialogStyles = css`
     }
 
     .footer {
-      background-color: #f4f4f4;
-      padding: 0.5em 1em;
+      border-top: 1px solid #d4d4d4;
+      padding: 0.6em 1em 0.5em 1em;
+      margin: 0 0.5em;
       user-select: none;
 
       .buttons {
         display: flex;
         flex-direction: row-reverse;
         gap: 0.4em;
-
-        button {
-          outline: none;
-          border: none;
-          padding: 0.25em 0.5em;
-          border-radius: 3px;
-          padding: 0.5em 0.75em;
-          cursor: pointer;
-
-          &.primary {
-            color: white;
-            background-color: #479ef5;
-
-            &:hover {
-              background-color: light-dark(
-                color-mix(in srgb, #479ef5, black 15%),
-                color-mix(in srgb, #479ef5, white 15%)
-              );
-            }
-
-            &:active {
-              background-color: light-dark(
-                color-mix(in srgb, #479ef5, black 25%),
-                color-mix(in srgb, #479ef5, white 25%)
-              );
-            }
-          }
-
-          &.secondary {
-            color: black;
-            background-color: #eee;
-
-            &:hover {
-              background-color: light-dark(
-                color-mix(in srgb, #eee, black 10%),
-                color-mix(in srgb, #eee, white 10%)
-              );
-            }
-
-            &:active {
-              background-color: light-dark(
-                color-mix(in srgb, #eee, black 20%),
-                color-mix(in srgb, #eee, white 20%)
-              );
-            }
-          }
-        }
       }
+    }
+  }
+
+  .dialog-content {
+    font-size: 16px;
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+      sans-serif;
+  }
+
+  .prompt-label {
+    font-weight: 600;
+    font-size: 80%;
+  }
+
+  .prompt-input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .action-button {
+    outline: none;
+    border: none;
+    border-radius: 3px;
+    padding: 0.5em 1.5em;
+    cursor: pointer;
+
+    &[data-appearance="primary"] {
+      color: ${theme.primaryTextColor};
+      background-color: ${theme.primaryBackgroundColor};
+
+      &::hover {
+        background-color: color-mix(
+          in srgb,
+          ${theme.primaryBackgroundColor},
+          black 10%
+        );
+      }
+    }
+
+    &[data-appearance="secondary"] {
+      color: ${theme.secondaryTextColor};
+      background-color: ${theme.secondaryBackgroundColor};
+      border: 1px solid ${theme.secondaryBorderColor};
+
+      &:hover {
+        background-color: color-mix(
+          in srgb,
+          ${theme.secondaryBackgroundColor},
+          black 5%
+        );
+      }
+
+      &:active {
+        background-color: color-mix(
+          in srgb,
+          ${theme.secondaryBackgroundColor},
+          black 10%
+        );
+      }
+    }
+
+    &[data-appearance="danger"] {
+      color: ${theme.dangerTextColor};
+      background-color: ${theme.dangerBackgroundColor};
+
+      &:hover {
+        background-color: color-mix(
+          in srgb,
+          ${theme.dangerBackgroundColor},
+          black 15%
+        );
+      }
+
+      &:active {
+        background-color: color-mix(
+          in srgb,
+          ${theme.dangerBackgroundColor},
+          black 40%
+        );
+      }
+    }
+  }
+
+  .close-button {
+    border: none;
+    outline: none;
+    border-radius: 3px;
+    padding: 0.3em;
+    margin: 0;
+    font-size: 1em;
+    line-height: 0;
+    background-color: transparent;
+    cursor: pointer;
+
+    &:hover {
+      background-color: light-dark(
+        color-mix(in srgb, white, black 10%),
+        color-mix(in srgb, black, white 10%)
+      );
+    }
+
+    &:active {
+      background-color: light-dark(
+        color-mix(in srgb, #f0f0f0, black 20%),
+        color-mix(in srgb, #f0f0f0, white 20%)
+      );
     }
   }
 `.asStyleSheet();

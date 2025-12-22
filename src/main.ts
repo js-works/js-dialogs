@@ -13,7 +13,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   </div>
 `;
 
-const dialogs = new DialogController();
+const dialogs = new DialogController({});
 
 document.querySelector<HTMLButtonElement>("#btn-info")!.onclick = async () => {
   const result = await dialogs.info({
