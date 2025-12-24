@@ -28,7 +28,15 @@ interface Ctrl<C> {
   prompt(config: PromptDialogConfig<C>): Promise<Result<string | null>>;
 }
 
-type DialogType = "info" | "success" | "warn" | "error" | "confirm" | "approve";
+type DialogType =
+  | "info"
+  | "success"
+  | "warn"
+  | "error"
+  | "confirm"
+  | "approve"
+  | "prompt"
+  | "input";
 
 interface Result<T = null> {
   readonly confirmed: boolean;
@@ -123,12 +131,12 @@ class DialogController<C> implements Ctrl<C> {
       html`
         <label class="prompt-label">
           ${config.label?.toString() || ""}
-          <input name="input" class="prompt-input" />
+          <input name="input" autofocus class="prompt-text-field" />
         </label>
       `.asString(),
     );
 
-    return this.#openDialog("approve", config, extraContent as any, [
+    return this.#openDialog("prompt", config, extraContent as any, [
       this.#okBtn,
       this.#declineBtn,
     ]);
@@ -214,18 +222,18 @@ class DialogController<C> implements Ctrl<C> {
         const content = h("div", { slot: key }, elem);
 
         dialogElem.append(content);
+      }
+    }
 
-        if (key === "content") {
-          if (this.#config.renderPromptInput) {
-            // TODO
-          } else {
-            const extra = h("div", null, elem);
-            extra.append(extraContent as any); // TODO!
-            dialogElem
-              .shadowRoot!.querySelector("slot[name=extra-content]")!
-              .append(extra);
-          }
-        }
+    if (extraContent) {
+      if (this.#config.renderPromptInput) {
+        // TODO
+      } else {
+        const extra = h("div", null, (extraContent as any) || "");
+        extra.append(extraContent as any); // TODO!
+        dialogElem
+          .shadowRoot!.querySelector("slot[name=extra-content]")!
+          .append(extra);
       }
     }
 
@@ -271,6 +279,7 @@ class CustomDialog extends HTMLElement {
       <dialog>
         <div class="dialog-content">
           <div class="header">
+            <div id="icon"></div>
             <div class="titles">
               <slot name="title" class="title"></slot>
               <slot name="subtitle" class="subtitle"></slot>
@@ -563,7 +572,7 @@ const dialogStyles = css`
     border: none;
     border-radius: ${theme.borderRadius};
     outline: none;
-    min-width: 25em;
+    min-width: 23em;
     box-sizing: border-box;
     padding: 0;
     margin: 0;
@@ -576,21 +585,41 @@ const dialogStyles = css`
     .header {
       display: flex;
       align-items: flex-start;
-      gap: 1em;
-      padding: 0.75em 1.25em;
+      gap: 0.6em;
+      padding: 1em 1.25em 0.125em 1.25em;
       width: 100%;
       box-sizing: border-box;
+
+      #icon {
+        display: none;
+        font-size: 150%;
+        align-self: center;
+
+        .icon-info,
+        .icon-success,
+        .icon-confirm,
+        .icon-prompt {
+          color: ${theme.primaryBackgroundColor};
+        }
+
+        .icon-warn,
+        .icon-error,
+        .icon-approve {
+          color: ${theme.dangerBackgroundColor};
+        }
+      }
 
       .titles {
         display: flex;
         flex-direction: column;
         width: 100%;
-        padding: 0.25em 0;
+        padding: 0.25em 0 0 0;
         gap: 0.125em;
 
         .title {
           display: block;
-          font-size: 1.15em;
+          font-size: 1.1em;
+          font-weight: 600;
         }
 
         .subtitle {
@@ -605,8 +634,8 @@ const dialogStyles = css`
       display: flex;
       flex-direction: column;
       gap: 0.5em;
-      padding: 0.75em 1.25em;
-      min-height: 4em;
+      padding: 0 1.25em 0.75em 1.25em;
+      min-height: 2em;
 
       .intro,
       .content,
@@ -616,9 +645,9 @@ const dialogStyles = css`
     }
 
     .footer {
-      border-top: 1px solid #d4d4d4;
-      padding: 0.6em 1em 0.5em 1em;
-      margin: 0 0.5em;
+      border-top: 1px solid #d8d8d8;
+      padding: 0.6em 0 0.5em 0;
+      margin: 0 0.75em;
       user-select: none;
 
       .buttons {
@@ -637,20 +666,28 @@ const dialogStyles = css`
   }
 
   .prompt-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
     font-weight: 600;
-    font-size: 80%;
+    font-size: 90%;
   }
 
-  .prompt-input {
+  .prompt-text-field {
     width: 100%;
+    outline: none;
+    border: 1px solid #aaa;
     box-sizing: border-box;
+    padding: 0.3em 0.7em;
+    margin: 0.125em 0;
+    font-size: 105%;
   }
 
   .action-button {
     outline: none;
     border: none;
     border-radius: 3px;
-    padding: 0.5em 1.5em;
+    padding: 0.6em 1.75em;
     cursor: pointer;
 
     &[data-appearance="primary"] {
@@ -742,7 +779,7 @@ const dialogStyles = css`
 // =================================================================
 
 const closeIcon = svg`
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-    <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
-  </svg>
-`;
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+      <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+    </svg>
+  `;

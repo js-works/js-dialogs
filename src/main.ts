@@ -28,7 +28,7 @@ document.querySelector<HTMLButtonElement>("#btn-success")!.onclick =
   async () => {
     const result = await dialogs.success({
       title: "Success",
-      content: "Hello, Jane Doe!",
+      content: 'File "app.log" has been deleted successfully.',
     });
 
     console.log(result);
@@ -46,7 +46,7 @@ document.querySelector<HTMLButtonElement>("#btn-warn")!.onclick = async () => {
 document.querySelector<HTMLButtonElement>("#btn-error")!.onclick = async () => {
   const result = await dialogs.error({
     title: "Error",
-    content: "Hello, Jane Doe!",
+    content: "The file could not be deleted!",
   });
 
   console.log(result);
@@ -55,8 +55,9 @@ document.querySelector<HTMLButtonElement>("#btn-error")!.onclick = async () => {
 document.querySelector<HTMLButtonElement>("#btn-confirm")!.onclick =
   async () => {
     const result = await dialogs.confirm({
-      title: "Welcome",
-      content: "Hello, Jane Doe!",
+      title: "Confirmation",
+      content: "Are you really sure the file shall be deleted?",
+      outro: "This cannot made undone.",
     });
 
     console.log(result);
@@ -65,8 +66,9 @@ document.querySelector<HTMLButtonElement>("#btn-confirm")!.onclick =
 document.querySelector<HTMLButtonElement>("#btn-approve")!.onclick =
   async () => {
     const result = await dialogs.approve({
-      title: "Welcome",
-      content: "Hello, Jane Doe!",
+      title: "Approval",
+      content:
+        "Are you really sure the file shall be deleted?\nThis cannot made undone.",
     });
 
     console.log(result);
@@ -75,8 +77,7 @@ document.querySelector<HTMLButtonElement>("#btn-approve")!.onclick =
 document.querySelector<HTMLButtonElement>("#btn-prompt")!.onclick =
   async () => {
     const result = await dialogs.prompt({
-      title: "Welcome",
-      content: "Hello, Jane Doe!",
+      title: "Input",
       label: "Please enter your name",
     });
 
