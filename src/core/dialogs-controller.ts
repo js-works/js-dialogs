@@ -105,7 +105,7 @@ class DialogController<C> implements Ctrl<C> {
   }
 
   async warn(config: MessageDialogConfig<C>): Promise<Result> {
-    return this.#openDialog("warn", config, null, [this.#okBtn]);
+    return this.#openDialog("warn", config, null, [this.#okBtnDanger]);
   }
 
   async error(config: MessageDialogConfig<C>): Promise<Result> {
@@ -160,7 +160,12 @@ class DialogController<C> implements Ctrl<C> {
     });
 
     const onButtonClicked = (id: Symbol) => {
-      dialogElem.remove();
+      dialogElem.addEventListener("animationend", () => {
+        alert(1);
+        dialogElem.remove();
+      });
+
+      (dialogElem as any).close();
 
       switch (dialogType) {
         case "info":
@@ -301,13 +306,21 @@ class CustomDialog extends HTMLElement {
 
     const dialogElem = htmlElement<HTMLDialogElement>(content.asString());
     this.shadowRoot!.append(dialogElem);
-
-    setTimeout(() => {
-      dialogElem.showModal();
-    }, 300);
+    queueMicrotask(() => this.open());
   }
 
   connectedCallback() {}
+
+  open() {
+    this.shadowRoot!.querySelector<HTMLDialogElement>("dialog")!.showModal();
+  }
+
+  close() {
+    this.shadowRoot!.querySelector<HTMLDialogElement>("dialog")!.classList.add(
+      "closing",
+    );
+    //this.shadowRoot!.querySelector<HTMLDialogElement>("dialog")!.close();
+  }
 
   static prepare(): string {
     if (!customElements.get(CustomDialog.#tagName)) {
@@ -563,10 +576,10 @@ const globalStyles = css``;
 
 const dialogStyles = css`
   dialog {
+    outline: none;
     position: fixed;
     top: 30%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translateY(-50%);
     color: ${theme.textColor};
     background-color: ${theme.dialogBackgroundColor};
     border: none;
@@ -575,11 +588,20 @@ const dialogStyles = css`
     min-width: 23em;
     box-sizing: border-box;
     padding: 0;
-    margin: 0;
+    margin: 0 auto;
+    opacity: 1;
+    transition: opacity 2s ease;
+
+    &[open]:not(.closing) {
+      animation: fadein 0.25s forwards;
+    }
+
+    &.closing {
+      opacity: 0;
+    }
 
     &::backdrop {
       background: rgba(0, 0, 0, 0.7);
-      xxbackdrop-filter: blur(1.5px);
     }
 
     .header {
@@ -770,6 +792,18 @@ const dialogStyles = css`
         color-mix(in srgb, #f0f0f0, black 20%),
         color-mix(in srgb, #f0f0f0, white 20%)
       );
+    }
+  }
+
+  @keyframes fadein {
+    0% {
+      top: 0;
+      opacity: 0;
+      transform: scale(0);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(-50%);
     }
   }
 `.asStyleSheet();
