@@ -12,6 +12,7 @@ body {
     gap: 0.5rem;
     margin: 4rem;
     max-width: 10rem;
+    user-select: none;
 }
 
 button {

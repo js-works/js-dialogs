@@ -29,25 +29,25 @@ interface Ctrl<C> {
 }
 
 type DialogType =
-  | "info"
-  | "success"
-  | "warn"
-  | "error"
-  | "confirm"
-  | "approve"
-  | "prompt"
-  | "input";
+  | 'info'
+  | 'success'
+  | 'warn'
+  | 'error'
+  | 'confirm'
+  | 'approve'
+  | 'prompt'
+  | 'input';
 
 interface Result<T = null> {
   readonly confirmed: boolean;
   readonly denied: boolean;
-  readonly cancelled: boolean;
+  readonly declined: boolean;
   data: T;
 }
 
 interface ButtonConfig {
   id: Symbol;
-  appearance: "primary" | "secondary" | "danger";
+  appearance: 'primary' | 'secondary' | 'danger';
   text: string;
 }
 
@@ -55,41 +55,41 @@ interface DialogControllerConfig {
   renderCloseButton?: (text: string, onClick: () => void) => HTMLElement;
 
   renderActionButton?: (
-    appearance: "primary" | "secondary" | "danger",
+    appearance: 'primary' | 'secondary' | 'danger',
     text: string,
-    onClick: () => void,
+    onClick: () => void
   ) => HTMLElement;
 
   renderPromptInput?: (
     label: string,
     value: string,
-    update: (value: string) => void,
+    update: (value: string) => void
   ) => void;
 }
 
 class DialogController<C> implements Ctrl<C> {
-  static readonly #symbolClose = Symbol("close");
-  static readonly #symbolOk = Symbol("ok");
-  static readonly #symbolDecline = Symbol("decline");
+  static readonly #symbolAbort = Symbol('close');
+  static readonly #symbolConfirm = Symbol('ok');
+  static readonly #symbolDecline = Symbol('decline');
 
   readonly #config: DialogControllerConfig;
 
   readonly #okBtn: ButtonConfig = {
-    id: DialogController.#symbolOk,
-    appearance: "primary",
-    text: "Ok",
+    id: DialogController.#symbolConfirm,
+    appearance: 'primary',
+    text: 'Ok',
   };
 
   readonly #okBtnDanger: ButtonConfig = {
-    id: DialogController.#symbolOk,
-    appearance: "danger",
-    text: "Ok",
+    id: DialogController.#symbolConfirm,
+    appearance: 'danger',
+    text: 'Ok',
   };
 
   readonly #declineBtn: ButtonConfig = {
     id: DialogController.#symbolDecline,
-    appearance: "secondary",
-    text: "Cancel",
+    appearance: 'secondary',
+    text: 'Cancel',
   };
 
   constructor(config: DialogControllerConfig) {
@@ -97,30 +97,30 @@ class DialogController<C> implements Ctrl<C> {
   }
 
   async info(config: MessageDialogConfig<C>): Promise<Result> {
-    return this.#openDialog("info", config, null, [this.#okBtn]);
+    return this.#openDialog('info', config, null, [this.#okBtn]);
   }
 
   async success(config: MessageDialogConfig<C>): Promise<Result> {
-    return this.#openDialog("success", config, null, [this.#okBtn]);
+    return this.#openDialog('success', config, null, [this.#okBtn]);
   }
 
   async warn(config: MessageDialogConfig<C>): Promise<Result> {
-    return this.#openDialog("warn", config, null, [this.#okBtnDanger]);
+    return this.#openDialog('warn', config, null, [this.#okBtnDanger]);
   }
 
   async error(config: MessageDialogConfig<C>): Promise<Result> {
-    return this.#openDialog("error", config, null, [this.#okBtnDanger]);
+    return this.#openDialog('error', config, null, [this.#okBtnDanger]);
   }
 
   async confirm(config: ConfirmDialogConfig<C>): Promise<Result> {
-    return this.#openDialog("confirm", config, null, [
+    return this.#openDialog('confirm', config, null, [
       this.#okBtn,
       this.#declineBtn,
     ]);
   }
 
   async approve(config: ConfirmDialogConfig<C>): Promise<Result> {
-    return this.#openDialog("approve", config, null, [
+    return this.#openDialog('approve', config, null, [
       this.#okBtnDanger,
       this.#declineBtn,
     ]);
@@ -130,13 +130,13 @@ class DialogController<C> implements Ctrl<C> {
     const extraContent = htmlElement(
       html`
         <label class="prompt-label">
-          ${config.label?.toString() || ""}
+          ${config.label?.toString() || ''}
           <input name="input" autofocus class="prompt-text-field" />
         </label>
-      `.asString(),
+      `.asString()
     );
 
-    return this.#openDialog("prompt", config, extraContent as any, [
+    return this.#openDialog('prompt', config, extraContent as any, [
       this.#okBtn,
       this.#declineBtn,
     ]);
@@ -146,7 +146,7 @@ class DialogController<C> implements Ctrl<C> {
     dialogType: DialogType,
     baseConfig: BaseDialogConfig<C>,
     extraContent: Renderable<C>,
-    buttons: ButtonConfig[],
+    buttons: ButtonConfig[]
   ): Promise<any> {
     const targetContainer = document.body;
     const customDialogTagName = CustomDialog.prepare();
@@ -159,64 +159,76 @@ class DialogController<C> implements Ctrl<C> {
       setError = reject;
     });
 
-    const onButtonClicked = (id: Symbol) => {
-      dialogElem.addEventListener("animationend", () => {
-        alert(1);
-        dialogElem.remove();
-      });
-
-      (dialogElem as any).close();
-
+    const finish = (id: Symbol) => {
       switch (dialogType) {
-        case "info":
-        case "success":
-        case "warn":
-        case "error":
+        case 'info':
+        case 'success':
+        case 'warn':
+        case 'error':
           setResult({
-            confirmed: id === DialogController.#symbolOk,
-            cancelled: false,
-            closed: id === DialogController.#symbolClose,
+            confirmed: id === DialogController.#symbolConfirm,
+            declined: false,
+            aborted: id === DialogController.#symbolAbort,
           });
           break;
-        case "confirm":
-        case "approve":
+        case 'confirm':
+        case 'approve':
           setResult({
-            confirmed: id === DialogController.#symbolOk,
-            cancelled: id !== DialogController.#symbolOk,
-            closed: id === DialogController.#symbolClose,
+            confirmed: id === DialogController.#symbolConfirm,
+            declined: id !== DialogController.#symbolConfirm,
+            aborted: id === DialogController.#symbolAbort,
+          });
+          break;
+        case 'prompt':
+          setResult({
+            confirmed: id === DialogController.#symbolConfirm,
+            declined: id === DialogController.#symbolDecline,
+            aborted: id === DialogController.#symbolAbort,
+            value:
+              id !== DialogController.#symbolConfirm
+                ? null
+                : customDialogElem.shadowRoot!.querySelector('input')!.value,
           });
           break;
       }
     };
 
-    const dialogElem = h(customDialogTagName, {
-      onclose: () => alert(1),
+    const onButtonClicked = async (id: Symbol) => {
+      const customDialogElem = targetContainer.lastChild as CustomDialog;
+      await customDialogElem.close();
+      finish(id);
+    };
+
+    const customDialogElem = h(customDialogTagName, {});
+
+    customDialogElem.addEventListener('cancel', () => {
+      finish(DialogController.#symbolAbort);
     });
 
     if (!this.#config.renderCloseButton) {
-      const closeButton = h("button", {
-        className: "close-button",
-        onclick: () => onButtonClicked(DialogController.#symbolClose),
+      const closeButton = h('button', {
+        className: 'close-button',
+        onclick: () => onButtonClicked(DialogController.#symbolAbort),
       });
 
       closeButton.innerHTML = closeIcon.getSvgText();
 
-      dialogElem
-        .shadowRoot!.querySelector("slot[name=close-button]")!
+      customDialogElem
+        .shadowRoot!.querySelector('slot[name=close-button]')!
         .append(closeButton);
     }
 
     for (const key of [
-      "title",
-      "subtitle",
-      "intro",
-      "content",
-      "outro",
+      'title',
+      'subtitle',
+      'intro',
+      'content',
+      'outro',
     ] as const) {
       const renderable = baseConfig[key];
 
       if (renderable) {
-        const elem = h<HTMLDivElement>("div");
+        const elem = h<HTMLDivElement>('div');
 
         if (renderable instanceof HtmlContent) {
           elem.innerHTML = renderable.asString();
@@ -224,9 +236,9 @@ class DialogController<C> implements Ctrl<C> {
           elem.innerText = renderable.toString();
         }
 
-        const content = h("div", { slot: key }, elem);
+        const content = h('div', { slot: key }, elem);
 
-        dialogElem.append(content);
+        customDialogElem.append(content);
       }
     }
 
@@ -234,36 +246,36 @@ class DialogController<C> implements Ctrl<C> {
       if (this.#config.renderPromptInput) {
         // TODO
       } else {
-        const extra = h("div", null, (extraContent as any) || "");
+        const extra = h('div', null, (extraContent as any) || '');
         extra.append(extraContent as any); // TODO!
-        dialogElem
-          .shadowRoot!.querySelector("slot[name=extra-content]")!
+        customDialogElem
+          .shadowRoot!.querySelector('slot[name=extra-content]')!
           .append(extra);
       }
     }
 
     if (!this.#config.renderActionButton) {
       const buttonContainer =
-        dialogElem.shadowRoot!.querySelector("slot[name=button]")!;
+        customDialogElem.shadowRoot!.querySelector('slot[name=button]')!;
 
       for (const buttonConfig of buttons) {
         const onClick = () => onButtonClicked(buttonConfig.id);
 
         const button = h(
-          "button",
+          'button',
           {
-            className: "action-button",
-            "data-appearance": buttonConfig.appearance,
+            className: 'action-button',
+            'data-appearance': buttonConfig.appearance,
             onclick: onClick,
           },
-          buttonConfig.text,
+          buttonConfig.text
         );
 
         buttonContainer.append(button);
       }
     }
 
-    targetContainer.append(dialogElem);
+    targetContainer.append(customDialogElem);
     return resultPromise;
   }
 }
@@ -273,11 +285,11 @@ class DialogController<C> implements Ctrl<C> {
 // =================================================================
 
 class CustomDialog extends HTMLElement {
-  static readonly #tagName = "internal-dialog-" + Date.now();
+  static readonly #tagName = 'internal-dialog-' + Date.now();
 
   constructor() {
     super();
-    this.attachShadow({ mode: "open" });
+    this.attachShadow({ mode: 'open' });
     this.shadowRoot!.adoptedStyleSheets = [dialogStyles];
 
     const content = html`
@@ -305,6 +317,13 @@ class CustomDialog extends HTMLElement {
     `;
 
     const dialogElem = htmlElement<HTMLDialogElement>(content.asString());
+
+    dialogElem.addEventListener('cancel', async (ev) => {
+      ev.preventDefault();
+      await this.close();
+      this.dispatchEvent(new Event('cancel'));
+    });
+
     this.shadowRoot!.append(dialogElem);
     queueMicrotask(() => this.open());
   }
@@ -312,14 +331,30 @@ class CustomDialog extends HTMLElement {
   connectedCallback() {}
 
   open() {
-    this.shadowRoot!.querySelector<HTMLDialogElement>("dialog")!.showModal();
+    this.shadowRoot!.querySelector<HTMLDialogElement>('dialog')!.showModal();
   }
 
-  close() {
-    this.shadowRoot!.querySelector<HTMLDialogElement>("dialog")!.classList.add(
-      "closing",
-    );
-    //this.shadowRoot!.querySelector<HTMLDialogElement>("dialog")!.close();
+  close(): Promise<void> {
+    const dialogElem =
+      this.shadowRoot!.querySelector<HTMLDialogElement>('dialog')!;
+
+    return new Promise((resolve) => {
+      dialogElem.addEventListener(
+        'animationend',
+        (ev) => {
+          if (ev.target === dialogElem) {
+            const customDialogElem = (dialogElem.getRootNode() as ShadowRoot)
+              .host as CustomDialog;
+            dialogElem.close();
+            customDialogElem.remove();
+            setTimeout(resolve, 250);
+          }
+        },
+        { once: true }
+      );
+
+      dialogElem.classList.add('closing');
+    });
   }
 
   static prepare(): string {
@@ -331,6 +366,7 @@ class CustomDialog extends HTMLElement {
       ...document.adoptedStyleSheets,
       globalStyles.asStyleSheet(),
     ];
+
     return CustomDialog.#tagName;
   }
 }
@@ -344,23 +380,23 @@ function freeze(obj: {}) {
 }
 
 function limitStringLength(s: string, maxLength: number) {
-  return s.length < maxLength ? s : s.substring(0, maxLength - 3) + "...";
+  return s.length < maxLength ? s : s.substring(0, maxLength - 3) + '...';
 }
 
 function escapeHtml(s: unknown) {
   return s === null || s === undefined
-    ? ""
+    ? ''
     : String(s)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
 }
 
 function isIterable(value: unknown): value is Iterable<unknown> {
   return (
-    typeof value === "object" && value !== null && Symbol.iterator in value
+    typeof value === 'object' && value !== null && Symbol.iterator in value
   );
 }
 
@@ -402,7 +438,7 @@ class HtmlContent {
   constructor(htmlText: string) {
     this.#htmlText =
       htmlText === null || htmlText === undefined
-        ? ""
+        ? ''
         : String(htmlText).trim();
   }
 
@@ -419,7 +455,7 @@ function html(strings: TemplateStringsArray, ...values: (string | null)[]) {
   const tokens: unknown[] = [];
 
   const handleValue = (value: unknown) => {
-    if (typeof value === "string") {
+    if (typeof value === 'string') {
       tokens.push(value);
     } else if (value instanceof HtmlContent) {
       tokens.push(value.asString());
@@ -439,17 +475,17 @@ function html(strings: TemplateStringsArray, ...values: (string | null)[]) {
     handleValue(values[idx]);
   });
 
-  return new HtmlContent(tokens.join(""));
+  return new HtmlContent(tokens.join(''));
 }
 
 html.raw = (htmlText: string) => new HtmlContent(htmlText);
 
 function htmlElement<T = HTMLElement>(htmlText: string) {
-  const elem = document.createElement("div");
+  const elem = document.createElement('div');
   elem.innerHTML = htmlText;
 
   if (elem.childElementCount !== 1) {
-    throw new Error("Must have exactly one root element");
+    throw new Error('Must have exactly one root element');
   }
 
   return elem.firstElementChild as T;
@@ -479,8 +515,8 @@ class SvgContent {
 
 function svg(strings: TemplateStringsArray, ...values: unknown[]) {
   const text = strings.reduce(
-    (result, str, i) => `${result}${str}${values[i] || ""}`,
-    "",
+    (result, str, i) => `${result}${str}${values[i] || ''}`,
+    ''
   );
 
   return new SvgContent(text);
@@ -496,7 +532,7 @@ class CssContent {
 
   constructor(cssText: String) {
     this.#cssText =
-      cssText === null || cssText === undefined ? "" : String(cssText);
+      cssText === null || cssText === undefined ? '' : String(cssText);
   }
 
   asStyleSheet() {
@@ -525,17 +561,17 @@ function css(strings: TemplateStringsArray, ...values: unknown[]) {
       value instanceof CssContent ? value.getCssText() : escapeHtml(value);
 
     return `${result}${str}${htmlText}`;
-  }, "");
+  }, '');
 
   return new CssContent(content);
 }
 
 function classNames(config: {}) {
-  let ret = "";
+  let ret = '';
 
   for (const [key, value] of Object.entries(config)) {
     if (value) {
-      ret = ret === "" ? key : `${ret} ${key}`;
+      ret = ret === '' ? key : `${ret} ${key}`;
     }
   }
 
@@ -549,7 +585,7 @@ function addStyles(cssContent: CssContent, target = document) {
 
   return () => {
     target.adoptedStyleSheets = target.adoptedStyleSheets.filter(
-      (it) => it != styleSheet,
+      (it) => it != styleSheet
     );
   };
 }
@@ -559,17 +595,18 @@ function addStyles(cssContent: CssContent, target = document) {
 // =================================================================
 
 const theme = {
-  primaryTextColor: "white",
-  primaryBackgroundColor: "oklch(50% 0.134 242.749)",
-  secondaryTextColor: "black",
-  secondaryBackgroundColor: "white",
-  secondaryBorderColor: "#b0b0b0",
-  dangerTextColor: "white",
-  dangerBackgroundColor: "#BE4545FF",
-  borderColor: "#eee",
-  borderRadius: "4px",
-  textColor: "lightDark(black, white)",
-  dialogBackgroundColor: "lightDark(white, #333)",
+  primaryTextColor: 'white',
+  primaryBackgroundColor: 'oklch(50% 0.134 242.749)',
+  secondaryTextColor: 'black',
+  secondaryBackgroundColor: 'white',
+  secondaryBorderColor: '#b0b0b0',
+  dangerTextColor: 'white',
+  dangerBackgroundColor: '#BE4545FF',
+  borderColor: '#eee',
+  borderRadius: '4px',
+  textColor: 'lightDark(black, white)',
+  dialogBackgroundColor: 'lightDark(white, #333)',
+  animationDuration: '0.3s',
 };
 
 const globalStyles = css``;
@@ -578,7 +615,7 @@ const dialogStyles = css`
   dialog {
     outline: none;
     position: fixed;
-    top: 30%;
+    top: 20%;
     transform: translateY(-50%);
     color: ${theme.textColor};
     background-color: ${theme.dialogBackgroundColor};
@@ -589,19 +626,26 @@ const dialogStyles = css`
     box-sizing: border-box;
     padding: 0;
     margin: 0 auto;
-    opacity: 1;
-    transition: opacity 2s ease;
+    user-select: none;
 
     &[open]:not(.closing) {
-      animation: fadein 0.25s forwards;
+      animation: dialog-fade-in ${theme.animationDuration} ease-in-out;
     }
 
-    &.closing {
-      opacity: 0;
+    &[open].closing {
+      animation: dialog-fade-out ${theme.animationDuration} ease-in-out;
     }
 
-    &::backdrop {
-      background: rgba(0, 0, 0, 0.7);
+    &[open]::backdrop {
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    &[open]:not(.closing)::backdrop {
+      animation: backdrop-fade-in ${theme.animationDuration} ease-in-out;
+    }
+
+    &[open].closing::backdrop {
+      animation: backdrop-fade-out ${theme.animationDuration} ease-in-out;
     }
 
     .header {
@@ -667,9 +711,8 @@ const dialogStyles = css`
     }
 
     .footer {
-      border-top: 1px solid #d8d8d8;
-      padding: 0.6em 0 0.5em 0;
-      margin: 0 0.75em;
+      padding: 0.6em 0.75em 0.6em 0.75em;
+      margin: 0;
       user-select: none;
 
       .buttons {
@@ -682,9 +725,8 @@ const dialogStyles = css`
 
   .dialog-content {
     font-size: 16px;
-    font-family:
-      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
-      sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Helvetica, Arial, sans-serif;
   }
 
   .prompt-label {
@@ -712,20 +754,28 @@ const dialogStyles = css`
     padding: 0.6em 1.75em;
     cursor: pointer;
 
-    &[data-appearance="primary"] {
+    &[data-appearance='primary'] {
       color: ${theme.primaryTextColor};
       background-color: ${theme.primaryBackgroundColor};
 
-      &::hover {
+      &:hover {
         background-color: color-mix(
           in srgb,
           ${theme.primaryBackgroundColor},
           black 10%
         );
       }
+
+      &:active {
+        background-color: color-mix(
+          in srgb,
+          ${theme.primaryBackgroundColor},
+          black 20%
+        );
+      }
     }
 
-    &[data-appearance="secondary"] {
+    &[data-appearance='secondary'] {
       color: ${theme.secondaryTextColor};
       background-color: ${theme.secondaryBackgroundColor};
       border: 1px solid ${theme.secondaryBorderColor};
@@ -747,7 +797,7 @@ const dialogStyles = css`
       }
     }
 
-    &[data-appearance="danger"] {
+    &[data-appearance='danger'] {
       color: ${theme.dangerTextColor};
       background-color: ${theme.dangerBackgroundColor};
 
@@ -795,7 +845,7 @@ const dialogStyles = css`
     }
   }
 
-  @keyframes fadein {
+  @keyframes dialog-fade-in {
     0% {
       top: 0;
       opacity: 0;
@@ -804,6 +854,36 @@ const dialogStyles = css`
     100% {
       opacity: 1;
       transform: scale(1) translateY(-50%);
+    }
+  }
+
+  @keyframes dialog-fade-out {
+    0% {
+      opacity: 1;
+      transform: scale(1) translateY(-50%);
+    }
+    100% {
+      top: 0;
+      opacity: 0;
+      transform: scale(0);
+    }
+  }
+
+  @keyframes backdrop-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes backdrop-fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
     }
   }
 `.asStyleSheet();
