@@ -16,6 +16,7 @@ interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {}
 
 interface PromptDialogConfig<C> extends BaseDialogConfig<C> {
   label?: Renderable<C>;
+  value?: string | null;
 }
 
 interface Ctrl<C> {
@@ -131,7 +132,12 @@ class DialogController<C> implements Ctrl<C> {
       html`
         <label class="prompt-label">
           ${config.label?.toString() || ''}
-          <input name="input" autofocus class="prompt-text-field" />
+          <input
+            name="input"
+            autofocus
+            class="prompt-text-field"
+            value="${config.value || ''}"
+          />
         </label>
       `.asString()
     );
@@ -615,7 +621,7 @@ const dialogStyles = css`
   dialog {
     outline: none;
     position: fixed;
-    top: 20%;
+    top: 25%;
     transform: translateY(-50%);
     color: ${theme.textColor};
     background-color: ${theme.dialogBackgroundColor};
@@ -711,7 +717,7 @@ const dialogStyles = css`
     }
 
     .footer {
-      padding: 0.6em 0.75em 0.6em 0.75em;
+      padding: 0.6em 1.25em 0.6em 1.25em;
       margin: 0;
       user-select: none;
 

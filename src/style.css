@@ -6,16 +6,28 @@ body {
     font-family: sans-serif;
 }
 
+#app {
+    display: flex;
+    gap: 5rem;
+    user-select: none;
+    margin: 4rem;
+}
+
 #column-1 {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    margin: 4rem;
     max-width: 10rem;
-    user-select: none;
 }
 
-button {
+#column-2 {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 10rem;
+}
+
+.btn {
     border: none;
     outline: none;
     background: none;
