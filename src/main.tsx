@@ -1,7 +1,8 @@
 import { html, DialogController } from './core/dialogs-controller.ts';
 import { createRoot } from 'react-dom/client';
 import { Button, MantineProvider, Text } from '@mantine/core';
-import { ModalsProvider, useModals } from '@mantine/modals';
+import { ModalsProvider } from '@mantine/modals';
+import { useDialogs } from './mantine/use-dialogs.ts';
 
 import './style.css';
 import '@mantine/core/styles.css';
@@ -98,9 +99,15 @@ const container = document.querySelector('#column-2')!;
 const root = createRoot(container);
 
 function MantineDialogDemo() {
-  const modals = useModals();
+  const dialogs = useDialogs();
 
   const onInfoClick = () => {
+    dialogs.info({
+      title: 'Information',
+      content: 'Happy New Year 2026',
+    });
+
+    /*
     modals.openConfirmModal({
       title: 'Please confirm your action',
       children: (
@@ -113,6 +120,7 @@ function MantineDialogDemo() {
       onCancel: () => console.log('Cancel'),
       onConfirm: () => console.log('Confirmed'),
     });
+    */
   };
 
   return <Button onClick={onInfoClick}>Info (Mantine)</Button>;

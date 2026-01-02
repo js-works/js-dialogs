@@ -53,6 +53,8 @@ interface ButtonConfig {
 }
 
 interface DialogControllerConfig {
+  openDialog?(data: any): void;
+
   renderCloseButton?: (text: string, onClick: () => void) => HTMLElement;
 
   renderActionButton?: (
@@ -154,8 +156,28 @@ class DialogController<C> implements Ctrl<C> {
     extraContent: Renderable<C>,
     buttons: ButtonConfig[]
   ): Promise<any> {
-    const targetContainer = document.body;
     const customDialogTagName = CustomDialog.prepare();
+
+    if (this.#config.openDialog) {
+      const slotContents: any = {};
+
+      for (const slot of ['title', 'subtitle', 'intro', 'content', 'outro']) {
+        slotContents[slot] = (baseConfig as any)[slot];
+      }
+
+      this.#config.openDialog({
+        customDialogTagName,
+        dialogType,
+        title: baseConfig.title,
+        slotContents,
+      });
+
+      return null;
+    }
+
+    const targetContainer = document.body;
+    const customDialogElem = h(customDialogTagName, {});
+    targetContainer.append(customDialogElem);
 
     let setResult: any;
     let setError: any;
@@ -204,8 +226,6 @@ class DialogController<C> implements Ctrl<C> {
       await customDialogElem.close();
       finish(id);
     };
-
-    const customDialogElem = h(customDialogTagName, {});
 
     customDialogElem.addEventListener('cancel', () => {
       finish(DialogController.#symbolAbort);
@@ -281,7 +301,6 @@ class DialogController<C> implements Ctrl<C> {
       }
     }
 
-    targetContainer.append(customDialogElem);
     return resultPromise;
   }
 }
@@ -292,14 +311,19 @@ class DialogController<C> implements Ctrl<C> {
 
 class CustomDialog extends HTMLElement {
   static readonly #tagName = 'internal-dialog-' + Date.now();
+  #initialized = false;
+
+  useNativeDialog = true;
 
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
     this.shadowRoot!.adoptedStyleSheets = [dialogStyles];
+  }
 
+  #init() {
     const content = html`
-      <dialog>
+      <${this.useNativeDialog ? 'dialog' : 'div'}>
         <div class="dialog-content">
           <div class="header">
             <div id="icon"></div>
@@ -319,7 +343,7 @@ class CustomDialog extends HTMLElement {
             <slot name="button" class="buttons"></slot>
           </div>
         </div>
-      </dialog>
+      </${this.useNativeDialog ? 'dialog' : 'div'}>
     `;
 
     const dialogElem = htmlElement<HTMLDialogElement>(content.asString());
@@ -331,12 +355,22 @@ class CustomDialog extends HTMLElement {
     });
 
     this.shadowRoot!.append(dialogElem);
-    queueMicrotask(() => this.open());
   }
 
-  connectedCallback() {}
+  connectedCallback() {
+    if (this.#initialized) {
+      return;
+    }
 
-  open() {
+    this.#init();
+    this.#initialized = true;
+
+    if (this.useNativeDialog) {
+      queueMicrotask(() => this.#open());
+    }
+  }
+
+  #open() {
     this.shadowRoot!.querySelector<HTMLDialogElement>('dialog')!.showModal();
   }
 
