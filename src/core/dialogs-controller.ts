@@ -1,4 +1,5 @@
 export { html, DialogController };
+export type { DialogAdapter };
 
 type Renderable<C> = C | string | number | null | undefined;
 
@@ -39,6 +40,8 @@ type DialogType =
   | 'prompt'
   | 'input';
 
+type ActionButtonType = 'primary' | 'secondary' | 'danger';
+
 interface Result<T = null> {
   readonly confirmed: boolean;
   readonly denied: boolean;
@@ -52,10 +55,27 @@ interface ButtonConfig {
   text: string;
 }
 
-interface DialogControllerConfig {
+interface DialogAdapter<C> {
+  openDialog?(data: {
+    id: string;
+    customDialogTabName: string;
+    slotsContents: [string, Renderable<C>][];
+    setResult(value: any): void;
+  }): {};
+
+  renderCloseButton(text: string, onClick: () => void): Renderable<C>;
+
+  renderActionButton(
+    type: ActionButtonType,
+    text: string,
+    onClick: () => void
+  ): Renderable<C>;
+}
+
+interface DialogControllerConfig<C> {
   openDialog?(data: any): void;
 
-  renderCloseButton?: (text: string, onClick: () => void) => HTMLElement;
+  renderCloseButton?: (text: string, onClick: () => void) => Renderable<C>;
 
   renderActionButton?: (
     appearance: 'primary' | 'secondary' | 'danger',
@@ -75,7 +95,7 @@ class DialogController<C> implements Ctrl<C> {
   static readonly #symbolConfirm = Symbol('ok');
   static readonly #symbolDecline = Symbol('decline');
 
-  readonly #config: DialogControllerConfig;
+  readonly #adapter: DialogAdapter<C>;
 
   readonly #okBtn: ButtonConfig = {
     id: DialogController.#symbolConfirm,
@@ -95,8 +115,8 @@ class DialogController<C> implements Ctrl<C> {
     text: 'Cancel',
   };
 
-  constructor(config: DialogControllerConfig) {
-    this.#config = config;
+  constructor(config: DialogAdapter<C>) {
+    this.#adapter = config;
   }
 
   async info(config: MessageDialogConfig<C>): Promise<Result> {
@@ -138,7 +158,7 @@ class DialogController<C> implements Ctrl<C> {
             name="input"
             autofocus
             class="prompt-text-field"
-            value="${config.value || ''}"
+            value=${config.value || ''}
           />
         </label>
       `.asString()
@@ -158,14 +178,42 @@ class DialogController<C> implements Ctrl<C> {
   ): Promise<any> {
     const customDialogTagName = CustomDialog.prepare();
 
-    if (this.#config.openDialog) {
-      const slotContents: any = {};
+    const onButtonClicked = async (id: Symbol) => {
+      if (!this.#adapter.openDialog) {
+        const customDialogElem = targetContainer.lastChild as CustomDialog;
+        await customDialogElem.close();
+        finish(id);
+      } else {
+        // TODO
+      }
+    };
+
+    if (this.#adapter.openDialog) {
+      const slotContents: any = [];
 
       for (const slot of ['title', 'subtitle', 'intro', 'content', 'outro']) {
-        slotContents[slot] = (baseConfig as any)[slot];
+        slotContents.push([slot, (baseConfig as any)[slot]]);
       }
 
-      this.#config.openDialog({
+      slotContents.push([
+        'close-button',
+        this.#adapter.renderCloseButton!('Close', () =>
+          onButtonClicked(DialogController.#symbolAbort)
+        ),
+      ]);
+
+      for (const buttonConfig of buttons) {
+        const button = this.#adapter.renderActionButton!(
+          buttonConfig.appearance,
+          buttonConfig.text,
+          () => onButtonClicked(buttonConfig.id)
+        );
+
+        slotContents.push(['action-button', button]);
+      }
+
+      this.#adapter.openDialog({
+        id: 'xyz',
         customDialogTagName,
         dialogType,
         title: baseConfig.title,
@@ -221,17 +269,11 @@ class DialogController<C> implements Ctrl<C> {
       }
     };
 
-    const onButtonClicked = async (id: Symbol) => {
-      const customDialogElem = targetContainer.lastChild as CustomDialog;
-      await customDialogElem.close();
-      finish(id);
-    };
-
     customDialogElem.addEventListener('cancel', () => {
       finish(DialogController.#symbolAbort);
     });
 
-    if (!this.#config.renderCloseButton) {
+    if (!this.#adapter.renderCloseButton) {
       const closeButton = h('button', {
         className: 'close-button',
         onclick: () => onButtonClicked(DialogController.#symbolAbort),
@@ -269,7 +311,7 @@ class DialogController<C> implements Ctrl<C> {
     }
 
     if (extraContent) {
-      if (this.#config.renderPromptInput) {
+      if (this.#adapter.renderPromptInput) {
         // TODO
       } else {
         const extra = h('div', null, (extraContent as any) || '');
@@ -280,9 +322,10 @@ class DialogController<C> implements Ctrl<C> {
       }
     }
 
-    if (!this.#config.renderActionButton) {
-      const buttonContainer =
-        customDialogElem.shadowRoot!.querySelector('slot[name=button]')!;
+    if (!this.#adapter.renderActionButton) {
+      const buttonContainer = customDialogElem.shadowRoot!.querySelector(
+        'slot[name=action-button]'
+      )!;
 
       for (const buttonConfig of buttons) {
         const onClick = () => onButtonClicked(buttonConfig.id);
@@ -340,7 +383,9 @@ class CustomDialog extends HTMLElement {
             <slot name="outro" class="outro"></slot>
           </div>
           <div class="footer">
-            <slot name="button" class="buttons"></slot>
+            <div class="action-buttons">
+              <slot name="action-button"></slot>
+            </div>
           </div>
         </div>
       </${this.useNativeDialog ? 'dialog' : 'div'}>
@@ -666,7 +711,6 @@ const dialogStyles = css`
     box-sizing: border-box;
     padding: 0;
     margin: 0 auto;
-    user-select: none;
 
     &[open]:not(.closing) {
       animation: dialog-fade-in ${theme.animationDuration} ease-in-out;
@@ -687,6 +731,14 @@ const dialogStyles = css`
     &[open].closing::backdrop {
       animation: backdrop-fade-out ${theme.animationDuration} ease-in-out;
     }
+  }
+
+  .dialog-content {
+    user-select: none;
+    font-size: 16px;
+    font-family:
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+      sans-serif;
 
     .header {
       display: flex;
@@ -755,18 +807,12 @@ const dialogStyles = css`
       margin: 0;
       user-select: none;
 
-      .buttons {
+      .action-buttons {
         display: flex;
         flex-direction: row-reverse;
         gap: 0.4em;
       }
     }
-  }
-
-  .dialog-content {
-    font-size: 16px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-      Helvetica, Arial, sans-serif;
   }
 
   .prompt-label {

@@ -104,26 +104,61 @@ function MantineDialogDemo() {
   const onInfoClick = () => {
     dialogs.info({
       title: 'Information',
+      subtitle: 'Bla bla bla...',
       content: 'Happy New Year 2026',
     });
-
-    /*
-    modals.openConfirmModal({
-      title: 'Please confirm your action',
-      children: (
-        <Text size="sm">
-          This action is so important that you are required to confirm it with a
-          modal. Please click one of these buttons to proceed.
-        </Text>
-      ),
-      labels: { confirm: 'Confirm', cancel: 'Cancel' },
-      onCancel: () => console.log('Cancel'),
-      onConfirm: () => console.log('Confirmed'),
-    });
-    */
   };
 
-  return <Button onClick={onInfoClick}>Info (Mantine)</Button>;
+  const onSuccessClick = () => {
+    dialogs.success({
+      title: 'Success',
+      subtitle: 'Bla bla bla...',
+      content: 'Happy New Year 2026',
+    });
+  };
+
+  const onWarnClick = () => {
+    dialogs.warn({
+      title: 'Warning',
+      subtitle: 'Bla bla bla...',
+      content: 'Happy New Year 2026',
+    });
+  };
+
+  const onErrorClick = () => {
+    dialogs.error({
+      title: 'Error',
+      subtitle: 'Bla bla bla...',
+      content: 'Happy New Year 2026',
+    });
+  };
+
+  const onConfirmClick = () => {
+    dialogs.confirm({
+      title: 'Error',
+      subtitle: 'Bla bla bla...',
+      content: 'Happy New Year 2026',
+    });
+  };
+
+  const onApproveClick = () => {
+    dialogs.approve({
+      title: 'Error',
+      subtitle: 'Bla bla bla...',
+      content: 'Happy New Year 2026',
+    });
+  };
+
+  return (
+    <>
+      <Button onClick={onInfoClick}>Info (Mantine)</Button>
+      <Button onClick={onSuccessClick}>Success (Mantine)</Button>
+      <Button onClick={onWarnClick}>Warn (Mantine)</Button>
+      <Button onClick={onErrorClick}>Error (Mantine)</Button>
+      <Button onClick={onConfirmClick}>Confirm (Mantine)</Button>
+      <Button onClick={onApproveClick}>Approve (Mantine)</Button>
+    </>
+  );
 }
 
 root.render(
