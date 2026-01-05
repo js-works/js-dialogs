@@ -65,6 +65,7 @@ interface DialogAdapter<C> {
     customDialogTagName: string;
     slotContents: [string, Renderable<C>][];
     init: (baseElem: Element) => void;
+    cancel(): void;
   }): {
     closeDialog: () => Promise<void>;
   };
@@ -218,6 +219,11 @@ class DialogController<C> implements Ctrl<C> {
       finish(id);
     };
 
+    const cancel = async (id: Symbol) => {
+      await closeDialog();
+      finish(symbolAbort);
+    };
+
     const slotContents: any = [];
     const internalSlotContents: any = [];
 
@@ -263,6 +269,7 @@ class DialogController<C> implements Ctrl<C> {
       id: 'dlg-' + Date.now(),
       customDialogTagName,
       slotContents: slotContents,
+      cancel,
       init,
     });
 
@@ -272,7 +279,7 @@ class DialogController<C> implements Ctrl<C> {
   #renderDefaultCloseButton(text: string, onClick: () => void) {
     const closeButton = h('button', {
       className: 'close-button',
-      //onclick: () => onButtonClicked(symbolAbort),
+      onclick: onClick,
     });
 
     closeButton.innerHTML = closeIcon.getSvgText();
@@ -306,14 +313,14 @@ const defaultDialogAdapter: DialogAdapter<HTMLElement> = {
     customDialogTagName,
     slotContents,
     init,
-    //setResult,
+    cancel,
   }) {
     const targetContainer = document.body;
     const customDialogElem: CustomDialogElement = h(customDialogTagName, {});
     targetContainer.append(customDialogElem);
 
     customDialogElem.addEventListener('cancel', () => {
-      //finish(symbolAbort);
+      cancel();
     });
 
     for (const [slotName, slotContent] of slotContents) {
