@@ -51,25 +51,27 @@ interface Result<T = null> {
 
 interface ButtonConfig {
   id: Symbol;
-  appearance: 'primary' | 'secondary' | 'danger';
+  Type: 'primary' | 'secondary' | 'danger';
   text: string;
 }
 
 interface DialogAdapter<C> {
-  openDialog?(data: {
+  openDialog(data: {
     id: string;
-    customDialogTabName: string;
-    slotsContents: [string, Renderable<C>][];
+    customDialogTagName: string;
+    slotContents: [string, Renderable<C>][];
     setResult(value: any): void;
   }): {};
 
-  renderCloseButton(text: string, onClick: () => void): Renderable<C>;
+  renderCloseButton?(text: string, onClick: () => void): Renderable<C>;
 
-  renderActionButton(
+  renderActionButton?(
     type: ActionButtonType,
     text: string,
     onClick: () => void
   ): Renderable<C>;
+
+  renderPromptInput?(labelText: string, value: string): Renderable<C>;
 }
 
 interface DialogControllerConfig<C> {
@@ -78,7 +80,7 @@ interface DialogControllerConfig<C> {
   renderCloseButton?: (text: string, onClick: () => void) => Renderable<C>;
 
   renderActionButton?: (
-    appearance: 'primary' | 'secondary' | 'danger',
+    Type: 'primary' | 'secondary' | 'danger',
     text: string,
     onClick: () => void
   ) => HTMLElement;
@@ -90,33 +92,33 @@ interface DialogControllerConfig<C> {
   ) => void;
 }
 
-class DialogController<C> implements Ctrl<C> {
-  static readonly #symbolAbort = Symbol('close');
-  static readonly #symbolConfirm = Symbol('ok');
-  static readonly #symbolDecline = Symbol('decline');
+const symbolAbort = Symbol('close');
+const symbolConfirm = Symbol('ok');
+const symbolDecline = Symbol('decline');
 
+class DialogController<C> implements Ctrl<C> {
   readonly #adapter: DialogAdapter<C>;
 
   readonly #okBtn: ButtonConfig = {
-    id: DialogController.#symbolConfirm,
-    appearance: 'primary',
+    id: symbolConfirm,
+    Type: 'primary',
     text: 'Ok',
   };
 
   readonly #okBtnDanger: ButtonConfig = {
-    id: DialogController.#symbolConfirm,
-    appearance: 'danger',
+    id: symbolConfirm,
+    Type: 'danger',
     text: 'Ok',
   };
 
   readonly #declineBtn: ButtonConfig = {
-    id: DialogController.#symbolDecline,
-    appearance: 'secondary',
+    id: symbolDecline,
+    Type: 'secondary',
     text: 'Cancel',
   };
 
-  constructor(config: DialogAdapter<C>) {
-    this.#adapter = config;
+  constructor(config?: DialogAdapter<C>) {
+    this.#adapter = config || (defaultDialogAdapter as any);
   }
 
   async info(config: MessageDialogConfig<C>): Promise<Result> {
@@ -150,7 +152,7 @@ class DialogController<C> implements Ctrl<C> {
   }
 
   async prompt(config: PromptDialogConfig<C>): Promise<Result<string | null>> {
-    const extraContent = htmlElement(
+    const extraContent = toHtmlElement(
       html`
         <label class="prompt-label">
           ${config.label?.toString() || ''}
@@ -176,57 +178,58 @@ class DialogController<C> implements Ctrl<C> {
     extraContent: Renderable<C>,
     buttons: ButtonConfig[]
   ): Promise<any> {
-    const customDialogTagName = CustomDialog.prepare();
+    const dialogAdapter = defaultDialogAdapter;
+    const customDialogTagName = CustomDialogElement.prepare();
 
     const onButtonClicked = async (id: Symbol) => {
+      alert('click');
+      /*
       if (!this.#adapter.openDialog) {
-        const customDialogElem = targetContainer.lastChild as CustomDialog;
+        const customDialogElem =
+          targetContainer.lastChild as CustomDialogElement;
         await customDialogElem.close();
         finish(id);
       } else {
         // TODO
       }
+      */
     };
 
-    if (this.#adapter.openDialog) {
-      const slotContents: any = [];
+    const slotContents: any = [];
+    const internalSlotContents: any = [];
 
-      for (const slot of ['title', 'subtitle', 'intro', 'content', 'outro']) {
-        slotContents.push([slot, (baseConfig as any)[slot]]);
-      }
-
-      slotContents.push([
-        'close-button',
-        this.#adapter.renderCloseButton!('Close', () =>
-          onButtonClicked(DialogController.#symbolAbort)
-        ),
-      ]);
-
-      for (const buttonConfig of buttons) {
-        const button = this.#adapter.renderActionButton!(
-          buttonConfig.appearance,
-          buttonConfig.text,
-          () => onButtonClicked(buttonConfig.id)
-        );
-
-        slotContents.push(['action-button', button]);
-      }
-
-      this.#adapter.openDialog({
-        id: 'xyz',
-        customDialogTagName,
-        dialogType,
-        title: baseConfig.title,
-        slotContents,
-      });
-
-      return null;
+    for (const slot of ['title', 'subtitle', 'intro', 'content', 'outro']) {
+      slotContents.push([slot, (baseConfig as any)[slot]]);
     }
 
-    const targetContainer = document.body;
-    const customDialogElem = h(customDialogTagName, {});
-    targetContainer.append(customDialogElem);
+    const closeButton = (
+      this.#adapter.renderCloseButton! || defaultDialogAdapter.renderCloseButton
+    )('Close', () => onButtonClicked(symbolAbort));
 
+    if (this.#adapter.renderCloseButton) {
+      slotContents.push(['close-button', closeButton]);
+    } else {
+      internalSlotContents.push(['close-button', closeButton]);
+    }
+
+    for (const buttonConfig of buttons) {
+      const button = this.#adapter.renderActionButton!(
+        buttonConfig.Type,
+        buttonConfig.text,
+        () => onButtonClicked(buttonConfig.id)
+      );
+
+      slotContents.push(['action-button', button]);
+    }
+
+    this.#adapter.openDialog({
+      id: 'xyz',
+      customDialogTagName,
+      slotContents: slotContents,
+      setResult: () => {}, // TODO
+    });
+
+    /*
     let setResult: any;
     let setError: any;
 
@@ -242,74 +245,34 @@ class DialogController<C> implements Ctrl<C> {
         case 'warn':
         case 'error':
           setResult({
-            confirmed: id === DialogController.#symbolConfirm,
+            confirmed: id === symbolConfirm,
             declined: false,
-            aborted: id === DialogController.#symbolAbort,
+            aborted: id === symbolAbort,
           });
           break;
         case 'confirm':
         case 'approve':
           setResult({
-            confirmed: id === DialogController.#symbolConfirm,
-            declined: id !== DialogController.#symbolConfirm,
-            aborted: id === DialogController.#symbolAbort,
+            confirmed: id === symbolConfirm,
+            declined: id !== symbolConfirm,
+            aborted: id === symbolAbort,
           });
           break;
         case 'prompt':
           setResult({
-            confirmed: id === DialogController.#symbolConfirm,
-            declined: id === DialogController.#symbolDecline,
-            aborted: id === DialogController.#symbolAbort,
+            confirmed: id === symbolConfirm,
+            declined: id === symbolDecline,
+            aborted: id === symbolAbort,
             value:
-              id !== DialogController.#symbolConfirm
+              id !== symbolConfirm
                 ? null
                 : customDialogElem.shadowRoot!.querySelector('input')!.value,
           });
           break;
       }
     };
-
-    customDialogElem.addEventListener('cancel', () => {
-      finish(DialogController.#symbolAbort);
-    });
-
-    if (!this.#adapter.renderCloseButton) {
-      const closeButton = h('button', {
-        className: 'close-button',
-        onclick: () => onButtonClicked(DialogController.#symbolAbort),
-      });
-
-      closeButton.innerHTML = closeIcon.getSvgText();
-
-      customDialogElem
-        .shadowRoot!.querySelector('slot[name=close-button]')!
-        .append(closeButton);
-    }
-
-    for (const key of [
-      'title',
-      'subtitle',
-      'intro',
-      'content',
-      'outro',
-    ] as const) {
-      const renderable = baseConfig[key];
-
-      if (renderable) {
-        const elem = h<HTMLDivElement>('div');
-
-        if (renderable instanceof HtmlContent) {
-          elem.innerHTML = renderable.asString();
-        } else {
-          elem.innerText = renderable.toString();
-        }
-
-        const content = h('div', { slot: key }, elem);
-
-        customDialogElem.append(content);
-      }
-    }
-
+ */
+    /*
     if (extraContent) {
       if (this.#adapter.renderPromptInput) {
         // TODO
@@ -334,7 +297,7 @@ class DialogController<C> implements Ctrl<C> {
           'button',
           {
             className: 'action-button',
-            'data-appearance': buttonConfig.appearance,
+            'data-type': buttonConfig.Type,
             onclick: onClick,
           },
           buttonConfig.text
@@ -343,16 +306,110 @@ class DialogController<C> implements Ctrl<C> {
         buttonContainer.append(button);
       }
     }
+    */
 
     return resultPromise;
   }
 }
 
 // =================================================================
+// Default dialog adapter
+// =================================================================
+
+const defaultDialogAdapter: DialogAdapter<HTMLElement> = {
+  openDialog({
+    id,
+    customDialogTagName,
+    slotContents: slotContents,
+    setResult,
+  }) {
+    const targetContainer = document.body;
+    const customDialogElem: CustomDialogElement = h(customDialogTagName, {});
+    targetContainer.append(customDialogElem);
+
+    customDialogElem.addEventListener('cancel', () => {
+      //finish(symbolAbort);
+    });
+
+    for (const [slotName, slotContent] of slotContents) {
+      const elem = toNode(slotContent);
+
+      if (slotName == 'close-button' || slotName === 'action-button') {
+        customDialogElem
+          .shadowRoot!.querySelector(`slot[name="${slotName}"]`)!
+          .append(elem);
+      } else {
+        customDialogElem.append(h('div', { slot: slotName }, elem));
+      }
+    }
+
+    document.body.append(customDialogElem);
+    //(customDialogElem as any).open();
+
+    /*
+    customDialogElem
+      .shadowRoot!.querySelector('slot[name=close-button]')!
+      .append(toNode(this.renderCloseButton('x', () => {})));
+
+    for (const key of [
+      'title',
+      'subtitle',
+      'intro',
+      'content',
+      'outro',
+    ] as const) {
+      const renderable = baseConfig[key];
+
+      if (renderable) {
+        const elem = h<HTMLDivElement>('div');
+
+        if (renderable instanceof HtmlContent) {
+          elem.innerHTML = renderable.asString();
+        } else {
+          elem.innerText = renderable.toString();
+        }
+
+        const content = h('div', { slot: key }, elem);
+
+        customDialogElem.append(content);
+      }
+      */
+
+    return {}; // TODO
+  },
+
+  renderCloseButton(text, onClick) {
+    const closeButton = h('button', {
+      className: 'close-button',
+      //onclick: () => onButtonClicked(symbolAbort),
+    });
+
+    closeButton.innerHTML = closeIcon.getSvgText();
+    return closeButton;
+  },
+
+  renderActionButton(type, text, onClick) {
+    return h(
+      'button',
+      {
+        className: 'action-button',
+        'data-type': type,
+        onclick: onClick,
+      },
+      text
+    );
+  },
+
+  renderPromptInput() {
+    return h('input');
+  },
+};
+
+// =================================================================
 // Dialog custom element
 // =================================================================
 
-class CustomDialog extends HTMLElement {
+class CustomDialogElement extends HTMLElement {
   static readonly #tagName = 'internal-dialog-' + Date.now();
   #initialized = false;
 
@@ -391,7 +448,7 @@ class CustomDialog extends HTMLElement {
       </${this.useNativeDialog ? 'dialog' : 'div'}>
     `;
 
-    const dialogElem = htmlElement<HTMLDialogElement>(content.asString());
+    const dialogElem = toHtmlElement<HTMLDialogElement>(content.asString());
 
     dialogElem.addEventListener('cancel', async (ev) => {
       ev.preventDefault();
@@ -429,7 +486,7 @@ class CustomDialog extends HTMLElement {
         (ev) => {
           if (ev.target === dialogElem) {
             const customDialogElem = (dialogElem.getRootNode() as ShadowRoot)
-              .host as CustomDialog;
+              .host as CustomDialogElement;
             dialogElem.close();
             customDialogElem.remove();
             setTimeout(resolve, 250);
@@ -443,8 +500,8 @@ class CustomDialog extends HTMLElement {
   }
 
   static prepare(): string {
-    if (!customElements.get(CustomDialog.#tagName)) {
-      customElements.define(CustomDialog.#tagName, CustomDialog);
+    if (!customElements.get(CustomDialogElement.#tagName)) {
+      customElements.define(CustomDialogElement.#tagName, CustomDialogElement);
     }
 
     document.adoptedStyleSheets = [
@@ -452,7 +509,7 @@ class CustomDialog extends HTMLElement {
       globalStyles.asStyleSheet(),
     ];
 
-    return CustomDialog.#tagName;
+    return CustomDialogElement.#tagName;
   }
 }
 
@@ -489,7 +546,7 @@ function isIterable(value: unknown): value is Iterable<unknown> {
 // HTML
 // =================================================================
 
-function h<T extends Element = Element>(
+function h<T extends HTMLElement = HTMLElement>(
   tagName: string,
   attrs?: Record<string, unknown> | null,
   ...children: (Node | string | null | undefined)[]
@@ -565,7 +622,7 @@ function html(strings: TemplateStringsArray, ...values: (string | null)[]) {
 
 html.raw = (htmlText: string) => new HtmlContent(htmlText);
 
-function htmlElement<T = HTMLElement>(htmlText: string) {
+function toHtmlElement<T = HTMLElement>(htmlText: string) {
   const elem = document.createElement('div');
   elem.innerHTML = htmlText;
 
@@ -574,6 +631,22 @@ function htmlElement<T = HTMLElement>(htmlText: string) {
   }
 
   return elem.firstElementChild as T;
+}
+
+function toNode(
+  content: Node | string | number | HtmlContent | null | undefined
+): Node {
+  if (content === null || content === undefined) {
+    return document.createTextNode('');
+  } else if (content instanceof Node) {
+    return content;
+  } else if (typeof content === 'number') {
+    return document.createTextNode(content.toString());
+  } else if (content instanceof HtmlContent) {
+    return toHtmlElement(content.asString());
+  }
+
+  return document.createTextNode(content);
 }
 
 function toHtmlContent(htmlContentOrPlainText: HtmlContent | string) {
@@ -840,7 +913,7 @@ const dialogStyles = css`
     padding: 0.6em 1.75em;
     cursor: pointer;
 
-    &[data-appearance='primary'] {
+    &[data-type='primary'] {
       color: ${theme.primaryTextColor};
       background-color: ${theme.primaryBackgroundColor};
 
@@ -861,7 +934,7 @@ const dialogStyles = css`
       }
     }
 
-    &[data-appearance='secondary'] {
+    &[data-type='secondary'] {
       color: ${theme.secondaryTextColor};
       background-color: ${theme.secondaryBackgroundColor};
       border: 1px solid ${theme.secondaryBorderColor};
@@ -883,7 +956,7 @@ const dialogStyles = css`
       }
     }
 
-    &[data-appearance='danger'] {
+    &[data-type='danger'] {
       color: ${theme.dangerTextColor};
       background-color: ${theme.dangerBackgroundColor};
 

@@ -20,7 +20,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
   <div id="column-2"></div>
 `.asString();
 
-const dialogs = new DialogController({});
+const dialogs = new DialogController();
 
 document.querySelector<HTMLButtonElement>('#btn-info')!.onclick = async () => {
   const result = await dialogs.info({
