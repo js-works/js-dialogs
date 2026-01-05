@@ -101,52 +101,72 @@ const root = createRoot(container);
 function MantineDialogDemo() {
   const dialogs = useDialogs();
 
-  const onInfoClick = () => {
-    dialogs.info({
+  const onInfoClick = async () => {
+    const result = await dialogs.info({
       title: 'Information',
       subtitle: 'Bla bla bla...',
       content: 'Happy New Year 2026',
     });
+
+    console.log(result);
   };
 
-  const onSuccessClick = () => {
-    dialogs.success({
+  const onSuccessClick = async () => {
+    const result = await dialogs.success({
       title: 'Success',
       subtitle: 'Bla bla bla...',
       content: 'Happy New Year 2026',
     });
+
+    console.log(result);
   };
 
-  const onWarnClick = () => {
-    dialogs.warn({
+  const onWarnClick = async () => {
+    const result = await dialogs.warn({
       title: 'Warning',
       subtitle: 'Bla bla bla...',
       content: 'Happy New Year 2026',
     });
+
+    console.log(result);
   };
 
-  const onErrorClick = () => {
-    dialogs.error({
+  const onErrorClick = async () => {
+    const result = await dialogs.error({
       title: 'Error',
       subtitle: 'Bla bla bla...',
       content: 'Happy New Year 2026',
     });
+
+    console.log(result);
   };
 
-  const onConfirmClick = () => {
-    dialogs.confirm({
+  const onConfirmClick = async () => {
+    const result = await dialogs.confirm({
       title: 'Error',
       subtitle: 'Bla bla bla...',
       content: 'Happy New Year 2026',
     });
+
+    console.log(result);
   };
 
-  const onApproveClick = () => {
-    dialogs.approve({
+  const onApproveClick = async () => {
+    const result = await dialogs.approve({
       title: 'Error',
       subtitle: 'Bla bla bla...',
       content: 'Happy New Year 2026',
     });
+
+    console.log(result);
+  };
+
+  const onPromptClick = async () => {
+    const result = await dialogs.prompt({
+      title: 'Prompt',
+    });
+
+    console.log(result);
   };
 
   return (
@@ -157,6 +177,7 @@ function MantineDialogDemo() {
       <Button onClick={onErrorClick}>Error (Mantine)</Button>
       <Button onClick={onConfirmClick}>Confirm (Mantine)</Button>
       <Button onClick={onApproveClick}>Approve (Mantine)</Button>
+      <Button onClick={onPromptClick}>Prompt (Mantine)</Button>
     </>
   );
 }
