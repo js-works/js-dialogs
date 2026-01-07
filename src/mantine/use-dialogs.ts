@@ -13,9 +13,7 @@ export function useDialogs() {
           const slots = [] as any;
 
           data.slotContents.forEach((entry: any, idx: number) => {
-            slots.push(
-              h('div', { slot: entry[0], key: `${entry[0]}-${idx}` }, entry[1])
-            );
+            slots.push(h('div', { slot: entry[0], key: `${entry[0]}-${idx}` }, entry[1]));
           });
 
           const modalId = modals.openModal({
@@ -29,16 +27,14 @@ export function useDialogs() {
                 null,
                 `.${data.id} > .mantine-Modal-inner >  .mantine-Modal-content > .mantine-Modal-body { padding: 0; }`
               ),
-              h(data.customDialogTagName, { useNativeDialog: false }, slots)
+              h(data.customDialogTagName, { useNativeDialog: false, ...data.properties }, slots)
             ),
           });
 
           return {
             closeDialog: () =>
               new Promise((resolve) => {
-                const dlg = document.querySelector(
-                  `.${data.id} > .mantine-Overlay-root`
-                )!;
+                const dlg = document.querySelector(`.${data.id} > .mantine-Overlay-root`)!;
 
                 dlg.addEventListener('transitionend', (ev: any) => {
                   if (ev.target === dlg) {
@@ -57,9 +53,7 @@ export function useDialogs() {
 
         renderActionButton(appearance: any, text: any, onClick: any) {
           const variant =
-            appearance === 'primary' || appearance === 'danger'
-              ? 'filled'
-              : 'default';
+            appearance === 'primary' || appearance === 'danger' ? 'filled' : 'default';
 
           const color = appearance === 'danger' ? 'red.9' : undefined;
 

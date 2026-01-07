@@ -20,7 +20,7 @@ interface MessageDialogConfig<C> extends BaseDialogConfig<C> {}
 interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {}
 
 interface PromptDialogConfig<C> extends BaseDialogConfig<C> {
-  label?: Renderable<C>;
+  labelText?: Renderable<C>;
   value?: string | null;
 }
 
@@ -139,22 +139,21 @@ class DialogController<C> implements Ctrl<C> {
   }
 
   async prompt(config: PromptDialogConfig<C>): Promise<Result<string | null>> {
-    const extraContent = toHtmlElement(
-      html`
-        <label class="prompt-label">
-          ${config.label?.toString() || ''}
-          <input name="input" autofocus class="prompt-text-field" value=${config.value || ''} />
-        </label>
-      `.asString()
+    return this.#openDialog(
+      'prompt',
+      config,
+      {
+        labelText: config.labelText,
+        value: config.value,
+      },
+      [this.#okBtn, this.#declineBtn]
     );
-
-    return this.#openDialog('prompt', config, extraContent as any, [this.#okBtn, this.#declineBtn]);
   }
 
   async #openDialog(
     dialogType: DialogType,
     baseConfig: BaseDialogConfig<C>,
-    _extraContent: Renderable<C>,
+    extraContent: Record<string, unknown> | null,
     buttons: ButtonConfig[]
   ): Promise<any> {
     const customDialogTagName = CustomDialogElement.prepare();
@@ -235,6 +234,19 @@ class DialogController<C> implements Ctrl<C> {
       }
     }
 
+    if (dialogType === 'prompt') {
+      const promptInput = (this.#adapter.renderPromptInput || this.#renderDefaultPromptInput)(
+        (extraContent as any).labelText,
+        (extraContent as any).value
+      );
+
+      if (this.#adapter.renderPromptInput) {
+        slotContents.push(['extra-content', promptInput]);
+      } else {
+        internalSlotContents.push(['extra-content', promptInput]);
+      }
+    }
+
     const init = (conatainer: HTMLElement) => {
       for (const [slotName, slotContent] of internalSlotContents) {
         conatainer.querySelector(`slot[name=${slotName}]`)!.appendChild(toNode(slotContent));
@@ -273,6 +285,17 @@ class DialogController<C> implements Ctrl<C> {
       text
     );
   }
+
+  #renderDefaultPromptInput(labelText: string, value: string) {
+    return toHtmlElement(
+      html`
+        <label class="prompt-label">
+          ${labelText?.toString() || ''}
+          <input name="input" autofocus class="prompt-text-field" value="${value || ''}" />
+        </label>
+      `.asString()
+    );
+  }
 }
 
 // =================================================================
@@ -296,7 +319,7 @@ const defaultDialogAdapter: DialogAdapter<HTMLElement> = {
     });
 
     for (const [slotName, slotContent] of slotContents) {
-      const elem = toNode(slotContent);
+      const elem = convertToNodes(slotContent);
       customDialogElem.shadowRoot!.querySelector(`slot[name="${slotName}"]`)!.append(elem);
     }
 
@@ -306,11 +329,23 @@ const defaultDialogAdapter: DialogAdapter<HTMLElement> = {
       closeDialog: () => customDialogElem.close(),
     };
   },
-
-  renderPromptInput() {
-    return h('input');
-  },
 };
+
+function convertToNodes(content: Renderable<HTMLElement>) {
+  if (content === undefined || content === null) {
+    return document.createTextNode('');
+  }
+
+  if (typeof content === 'string') {
+    const lines = content.split(/\r?\n/);
+
+    return lines.length === 1
+      ? document.createTextNode(lines[0])
+      : h('span', null, ...lines.map((line) => h('div', null, line)));
+  }
+
+  return toNode(content);
+}
 
 // =================================================================
 // Dialog custom element
@@ -474,7 +509,7 @@ function h<T extends HTMLElement = HTMLElement>(
 }
 
 class HtmlContent {
-  #htmlText;
+  readonly #htmlText;
 
   constructor(htmlText: string) {
     this.#htmlText = htmlText === null || htmlText === undefined ? '' : String(htmlText).trim();
@@ -690,8 +725,7 @@ const dialogStyles = css`
   .dialog-content {
     user-select: none;
     font-size: 16px;
-    font-family:
-      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
     .header {
       display: flex;

@@ -31,15 +31,14 @@ document.querySelector<HTMLButtonElement>('#btn-info')!.onclick = async () => {
   console.log(result);
 };
 
-document.querySelector<HTMLButtonElement>('#btn-success')!.onclick =
-  async () => {
-    const result = await dialogs.success({
-      title: 'Success',
-      content: 'File "app.log" has been deleted successfully.',
-    });
+document.querySelector<HTMLButtonElement>('#btn-success')!.onclick = async () => {
+  const result = await dialogs.success({
+    title: 'Success',
+    content: 'File "app.log" has been deleted successfully.',
+  });
 
-    console.log(result);
-  };
+  console.log(result);
+};
 
 document.querySelector<HTMLButtonElement>('#btn-warn')!.onclick = async () => {
   const result = await dialogs.warn({
@@ -59,38 +58,34 @@ document.querySelector<HTMLButtonElement>('#btn-error')!.onclick = async () => {
   console.log(result);
 };
 
-document.querySelector<HTMLButtonElement>('#btn-confirm')!.onclick =
-  async () => {
-    const result = await dialogs.confirm({
-      title: 'Confirmation',
-      content: 'Are you really sure the file shall be deleted?',
-      outro: 'This cannot made undone.',
-    });
+document.querySelector<HTMLButtonElement>('#btn-confirm')!.onclick = async () => {
+  const result = await dialogs.confirm({
+    title: 'Confirmation',
+    content: 'Are you really sure the file shall be deleted?',
+    outro: 'This cannot made undone.',
+  });
 
-    console.log(result);
-  };
+  console.log(result);
+};
 
-document.querySelector<HTMLButtonElement>('#btn-approve')!.onclick =
-  async () => {
-    const result = await dialogs.approve({
-      title: 'Approval',
-      content:
-        'Are you really sure the file shall be deleted?\nThis cannot made undone.',
-    });
+document.querySelector<HTMLButtonElement>('#btn-approve')!.onclick = async () => {
+  const result = await dialogs.approve({
+    title: 'Approval',
+    content: 'Are you really sure the file shall be deleted?\nThis cannot made undone.',
+  });
 
-    console.log(result);
-  };
+  console.log(result);
+};
 
-document.querySelector<HTMLButtonElement>('#btn-prompt')!.onclick =
-  async () => {
-    const result = await dialogs.prompt({
-      title: 'Input',
-      label: 'Please enter your name',
-      value: 'Jane Doe',
-    });
+document.querySelector<HTMLButtonElement>('#btn-prompt')!.onclick = async () => {
+  const result = await dialogs.prompt({
+    title: 'Input',
+    labelText: 'Please enter your name',
+    value: 'Jane Doe',
+  });
 
-    console.log(result);
-  };
+  console.log(result);
+};
 
 // === React /Mantine ================================================
 
@@ -164,6 +159,8 @@ function MantineDialogDemo() {
   const onPromptClick = async () => {
     const result = await dialogs.prompt({
       title: 'Prompt',
+      labelText: 'Please enter your name',
+      value: 'Jane',
     });
 
     console.log(result);
