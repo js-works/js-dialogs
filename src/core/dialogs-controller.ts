@@ -64,7 +64,7 @@ interface DialogAdapter<C> {
     id: string;
     customDialogTagName: string;
     slotContents: [string, Renderable<C>][];
-    init: (baseElem: Element) => void;
+    properties: Record<string, unknown>;
     cancel(): void;
   }): {
     closeDialog: () => Promise<void>;
@@ -72,11 +72,7 @@ interface DialogAdapter<C> {
 
   renderCloseButton?(text: string, onClick: () => void): Renderable<C>;
 
-  renderActionButton?(
-    type: ActionButtonType,
-    text: string,
-    onClick: () => void
-  ): Renderable<C>;
+  renderActionButton?(type: ActionButtonType, text: string, onClick: () => void): Renderable<C>;
 
   renderPromptInput?(labelText: string, value: string): Renderable<C>;
 }
@@ -135,17 +131,11 @@ class DialogController<C> implements Ctrl<C> {
   }
 
   async confirm(config: ConfirmDialogConfig<C>): Promise<Result> {
-    return this.#openDialog('confirm', config, null, [
-      this.#okBtn,
-      this.#declineBtn,
-    ]);
+    return this.#openDialog('confirm', config, null, [this.#okBtn, this.#declineBtn]);
   }
 
   async approve(config: ConfirmDialogConfig<C>): Promise<Result> {
-    return this.#openDialog('approve', config, null, [
-      this.#okBtnDanger,
-      this.#declineBtn,
-    ]);
+    return this.#openDialog('approve', config, null, [this.#okBtnDanger, this.#declineBtn]);
   }
 
   async prompt(config: PromptDialogConfig<C>): Promise<Result<string | null>> {
@@ -153,20 +143,12 @@ class DialogController<C> implements Ctrl<C> {
       html`
         <label class="prompt-label">
           ${config.label?.toString() || ''}
-          <input
-            name="input"
-            autofocus
-            class="prompt-text-field"
-            value=${config.value || ''}
-          />
+          <input name="input" autofocus class="prompt-text-field" value=${config.value || ''} />
         </label>
       `.asString()
     );
 
-    return this.#openDialog('prompt', config, extraContent as any, [
-      this.#okBtn,
-      this.#declineBtn,
-    ]);
+    return this.#openDialog('prompt', config, extraContent as any, [this.#okBtn, this.#declineBtn]);
   }
 
   async #openDialog(
@@ -232,8 +214,7 @@ class DialogController<C> implements Ctrl<C> {
     }
 
     const closeButton = (
-      this.#adapter.renderCloseButton ||
-      this.#renderDefaultCloseButton.bind(this)
+      this.#adapter.renderCloseButton || this.#renderDefaultCloseButton.bind(this)
     )('Close', () => onButtonClicked(symbolAbort));
 
     if (this.#adapter.renderCloseButton) {
@@ -244,11 +225,8 @@ class DialogController<C> implements Ctrl<C> {
 
     for (const buttonConfig of buttons) {
       const actionButton = (
-        this.#adapter.renderActionButton ||
-        this.#renderDefaultActionButton.bind(this)
-      )(buttonConfig.type, buttonConfig.text, () =>
-        onButtonClicked(buttonConfig.id)
-      );
+        this.#adapter.renderActionButton || this.#renderDefaultActionButton.bind(this)
+      )(buttonConfig.type, buttonConfig.text, () => onButtonClicked(buttonConfig.id));
 
       if (this.#adapter.renderActionButton) {
         slotContents.push(['action-button', actionButton]);
@@ -257,20 +235,18 @@ class DialogController<C> implements Ctrl<C> {
       }
     }
 
-    const init = (baseElem: Element) => {
+    const init = (conatainer: HTMLElement) => {
       for (const [slotName, slotContent] of internalSlotContents) {
-        baseElem
-          .querySelector(`slot[name=${slotName}]`)!
-          .appendChild(toNode(slotContent));
+        conatainer.querySelector(`slot[name=${slotName}]`)!.appendChild(toNode(slotContent));
       }
     };
 
     const { closeDialog } = this.#adapter.openDialog({
       id: 'dlg-' + Date.now(),
       customDialogTagName,
+      properties: { init },
       slotContents: slotContents,
-      cancel,
-      init,
+      cancel: () => {}, // todo!!!!!!!
     });
 
     return resultPromise;
@@ -286,11 +262,7 @@ class DialogController<C> implements Ctrl<C> {
     return closeButton;
   }
 
-  #renderDefaultActionButton(
-    type: ActionButtonType,
-    text: string,
-    onClick: () => {}
-  ) {
+  #renderDefaultActionButton(type: ActionButtonType, text: string, onClick: () => {}) {
     return h(
       'button',
       {
@@ -312,11 +284,11 @@ const defaultDialogAdapter: DialogAdapter<HTMLElement> = {
     //id,
     customDialogTagName,
     slotContents,
-    init,
+    properties,
     cancel,
   }) {
     const targetContainer = document.body;
-    const customDialogElem: CustomDialogElement = h(customDialogTagName, {});
+    const customDialogElem: CustomDialogElement = h(customDialogTagName, properties);
     targetContainer.append(customDialogElem);
 
     customDialogElem.addEventListener('cancel', () => {
@@ -325,13 +297,9 @@ const defaultDialogAdapter: DialogAdapter<HTMLElement> = {
 
     for (const [slotName, slotContent] of slotContents) {
       const elem = toNode(slotContent);
-
-      customDialogElem
-        .shadowRoot!.querySelector(`slot[name="${slotName}"]`)!
-        .append(elem);
+      customDialogElem.shadowRoot!.querySelector(`slot[name="${slotName}"]`)!.append(elem);
     }
 
-    init(customDialogElem.shadowRoot?.firstElementChild!);
     document.body.append(customDialogElem);
 
     return {
@@ -353,7 +321,7 @@ class CustomDialogElement extends HTMLElement {
   #initialized = false;
 
   useNativeDialog = true;
-  init: (elem: CustomDialogElement) => void = () => {};
+  init: (elem: HTMLElement) => void = () => {};
 
   constructor() {
     super();
@@ -396,7 +364,7 @@ class CustomDialogElement extends HTMLElement {
       this.dispatchEvent(new Event('cancel'));
     });
 
-    this.init(this);
+    this.init(dialogElem);
     this.shadowRoot!.append(dialogElem);
   }
 
@@ -418,8 +386,7 @@ class CustomDialogElement extends HTMLElement {
   }
 
   close(): Promise<void> {
-    const dialogElem =
-      this.shadowRoot!.querySelector<HTMLDialogElement>('dialog')!;
+    const dialogElem = this.shadowRoot!.querySelector<HTMLDialogElement>('dialog')!;
 
     return new Promise((resolve) => {
       dialogElem.addEventListener(
@@ -430,7 +397,7 @@ class CustomDialogElement extends HTMLElement {
               .host as CustomDialogElement;
             dialogElem.close();
             customDialogElem.remove();
-            setTimeout(resolve, 250);
+            setTimeout(resolve, 100);
           }
         },
         { once: true }
@@ -445,10 +412,7 @@ class CustomDialogElement extends HTMLElement {
       customElements.define(CustomDialogElement.#tagName, CustomDialogElement);
     }
 
-    document.adoptedStyleSheets = [
-      ...document.adoptedStyleSheets,
-      globalStyles.asStyleSheet(),
-    ];
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, globalStyles.asStyleSheet()];
 
     return CustomDialogElement.#tagName;
   }
@@ -474,9 +438,7 @@ function escapeHtml(s: unknown) {
 }
 
 function isIterable(value: unknown): value is Iterable<unknown> {
-  return (
-    typeof value === 'object' && value !== null && Symbol.iterator in value
-  );
+  return typeof value === 'object' && value !== null && Symbol.iterator in value;
 }
 
 // =================================================================
@@ -515,10 +477,7 @@ class HtmlContent {
   #htmlText;
 
   constructor(htmlText: string) {
-    this.#htmlText =
-      htmlText === null || htmlText === undefined
-        ? ''
-        : String(htmlText).trim();
+    this.#htmlText = htmlText === null || htmlText === undefined ? '' : String(htmlText).trim();
   }
 
   asString() {
@@ -570,9 +529,7 @@ function toHtmlElement<T = HTMLElement>(htmlText: string) {
   return elem.firstElementChild as T;
 }
 
-function toNode(
-  content: Node | string | number | HtmlContent | null | undefined
-): Node {
+function toNode(content: Node | string | number | HtmlContent | null | undefined): Node {
   if (content === null || content === undefined) {
     return document.createTextNode('');
   } else if (content instanceof Node) {
@@ -603,10 +560,7 @@ class SvgContent {
 }
 
 function svg(strings: TemplateStringsArray, ...values: unknown[]) {
-  const text = strings.reduce(
-    (result, str, i) => `${result}${str}${values[i] || ''}`,
-    ''
-  );
+  const text = strings.reduce((result, str, i) => `${result}${str}${values[i] || ''}`, '');
 
   return new SvgContent(text);
 }
@@ -620,8 +574,7 @@ class CssContent {
   #styleSheet: CSSStyleSheet | null = null;
 
   constructor(cssText: String) {
-    this.#cssText =
-      cssText === null || cssText === undefined ? '' : String(cssText);
+    this.#cssText = cssText === null || cssText === undefined ? '' : String(cssText);
   }
 
   asStyleSheet() {
@@ -646,8 +599,7 @@ class CssContent {
 function css(strings: TemplateStringsArray, ...values: unknown[]) {
   const content = strings.reduce((result, str, i) => {
     const value = values[i];
-    const htmlText =
-      value instanceof CssContent ? value.getCssText() : escapeHtml(value);
+    const htmlText = value instanceof CssContent ? value.getCssText() : escapeHtml(value);
 
     return `${result}${str}${htmlText}`;
   }, '');
@@ -673,9 +625,7 @@ function addStyles(cssContent: CssContent, target = document) {
   target.adoptedStyleSheets = [...target.adoptedStyleSheets, styleSheet];
 
   return () => {
-    target.adoptedStyleSheets = target.adoptedStyleSheets.filter(
-      (it) => it != styleSheet
-    );
+    target.adoptedStyleSheets = target.adoptedStyleSheets.filter((it) => it != styleSheet);
   };
 }
 
@@ -740,8 +690,8 @@ const dialogStyles = css`
   .dialog-content {
     user-select: none;
     font-size: 16px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-      Helvetica, Arial, sans-serif;
+    font-family:
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
     .header {
       display: flex;
@@ -848,19 +798,11 @@ const dialogStyles = css`
       background-color: ${theme.primaryBackgroundColor};
 
       &:hover {
-        background-color: color-mix(
-          in srgb,
-          ${theme.primaryBackgroundColor},
-          black 10%
-        );
+        background-color: color-mix(in srgb, ${theme.primaryBackgroundColor}, black 10%);
       }
 
       &:active {
-        background-color: color-mix(
-          in srgb,
-          ${theme.primaryBackgroundColor},
-          black 20%
-        );
+        background-color: color-mix(in srgb, ${theme.primaryBackgroundColor}, black 20%);
       }
     }
 
@@ -870,19 +812,11 @@ const dialogStyles = css`
       border: 1px solid ${theme.secondaryBorderColor};
 
       &:hover {
-        background-color: color-mix(
-          in srgb,
-          ${theme.secondaryBackgroundColor},
-          black 5%
-        );
+        background-color: color-mix(in srgb, ${theme.secondaryBackgroundColor}, black 5%);
       }
 
       &:active {
-        background-color: color-mix(
-          in srgb,
-          ${theme.secondaryBackgroundColor},
-          black 10%
-        );
+        background-color: color-mix(in srgb, ${theme.secondaryBackgroundColor}, black 10%);
       }
     }
 
@@ -891,19 +825,11 @@ const dialogStyles = css`
       background-color: ${theme.dangerBackgroundColor};
 
       &:hover {
-        background-color: color-mix(
-          in srgb,
-          ${theme.dangerBackgroundColor},
-          black 15%
-        );
+        background-color: color-mix(in srgb, ${theme.dangerBackgroundColor}, black 15%);
       }
 
       &:active {
-        background-color: color-mix(
-          in srgb,
-          ${theme.dangerBackgroundColor},
-          black 40%
-        );
+        background-color: color-mix(in srgb, ${theme.dangerBackgroundColor}, black 40%);
       }
     }
   }
