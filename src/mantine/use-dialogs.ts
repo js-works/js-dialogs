@@ -1,4 +1,4 @@
-import { Button, CloseButton } from '@mantine/core';
+import { Button, CloseButton, TextInput } from '@mantine/core';
 import { useModals } from '@mantine/modals';
 import { createElement as h, useState, type ReactElement } from 'react';
 import { DialogController } from '../core/dialogs-controller';
@@ -48,7 +48,7 @@ export function useDialogs() {
         },
 
         renderCloseButton(text: any, onClick: any) {
-          return h(CloseButton as any, { onClick, title: text });
+          return h(CloseButton as any, { title: text, onClick });
         },
 
         renderActionButton(appearance: any, text: any, onClick: any) {
@@ -66,6 +66,10 @@ export function useDialogs() {
             },
             text
           );
+        },
+
+        renderPromptInput(labelText, value) {
+          return h(TextInput as any, { defaultValue: value, label: labelText });
         },
       })
   );

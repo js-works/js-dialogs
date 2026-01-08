@@ -291,7 +291,13 @@ class DialogController<C> implements Ctrl<C> {
       html`
         <label class="prompt-label">
           ${labelText?.toString() || ''}
-          <input name="input" autofocus class="prompt-text-field" value="${value || ''}" />
+          <input
+            name="input"
+            autofocus
+            autocomplete="off"
+            class="prompt-text-field"
+            value=${value || ''}
+          />
         </label>
       `.asString()
     );
@@ -677,10 +683,12 @@ const theme = {
   dangerTextColor: 'white',
   dangerBackgroundColor: '#BE4545FF',
   borderColor: '#eee',
-  borderRadius: '4px',
+  dialogBorderRadius: '6px',
+  closeButtonBorderRadius: '100%',
+  actionButtonBorderRadius: '3px',
   textColor: 'lightDark(black, white)',
   dialogBackgroundColor: 'lightDark(white, #333)',
-  animationDuration: '0.3s',
+  animationDuration: '0.25s',
 };
 
 const globalStyles = css``;
@@ -689,12 +697,12 @@ const dialogStyles = css`
   dialog {
     outline: none;
     position: fixed;
-    top: 25%;
+    top: 18%;
     transform: translateY(-50%);
     color: ${theme.textColor};
     background-color: ${theme.dialogBackgroundColor};
     border: none;
-    border-radius: ${theme.borderRadius};
+    border-radius: ${theme.dialogBorderRadius};
     outline: none;
     min-width: 23em;
     box-sizing: border-box;
@@ -725,7 +733,8 @@ const dialogStyles = css`
   .dialog-content {
     user-select: none;
     font-size: 16px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family:
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
     .header {
       display: flex;
@@ -790,8 +799,7 @@ const dialogStyles = css`
     }
 
     .footer {
-      padding: 0.6em 1.25em 0.6em 1.25em;
-      margin: 0;
+      padding: 0.75em;
       user-select: none;
 
       .action-buttons {
@@ -805,7 +813,6 @@ const dialogStyles = css`
   .prompt-label {
     display: flex;
     flex-direction: column;
-    gap: 0.25em;
     font-weight: 600;
     font-size: 90%;
   }
@@ -823,7 +830,7 @@ const dialogStyles = css`
   .action-button {
     outline: none;
     border: none;
-    border-radius: 3px;
+    border-radius: ${theme.actionButtonBorderRadius};
     padding: 0.6em 1.75em;
     cursor: pointer;
 
@@ -870,14 +877,15 @@ const dialogStyles = css`
 
   .close-button {
     border: none;
+    border-radius: ${theme.closeButtonBorderRadius};
     outline: none;
-    border-radius: 3px;
     padding: 0.3em;
     margin: 0;
     font-size: 1em;
     line-height: 0;
     background-color: transparent;
     cursor: pointer;
+    padding: 0.3em;
 
     &:hover {
       background-color: light-dark(
@@ -896,25 +904,23 @@ const dialogStyles = css`
 
   @keyframes dialog-fade-in {
     0% {
-      top: 0;
+      top: 10%;
       opacity: 0;
-      transform: scale(0);
     }
     100% {
       opacity: 1;
-      transform: scale(1) translateY(-50%);
+      transform: translateY(-50%);
     }
   }
 
   @keyframes dialog-fade-out {
     0% {
       opacity: 1;
-      transform: scale(1) translateY(-50%);
+      transform: translateY(-50%);
     }
     100% {
-      top: 0;
+      top: 10%;
       opacity: 0;
-      transform: scale(0);
     }
   }
 
