@@ -1,8 +1,9 @@
-import { html, DialogController } from './core/dialogs-controller.ts';
+import { html, DialogController } from '../core/dialog-controller.ts';
 import { createRoot } from 'react-dom/client';
 import { Button, MantineProvider, Text } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
-import { useDialogs } from './mantine/use-dialogs.ts';
+import { useDialogs } from '../mantine/use-dialogs.js';
+import { dialogs } from './vanilla-dialogs.js';
 
 import './style.css';
 import '@mantine/core/styles.css';
@@ -19,8 +20,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
   </div>
   <div id="column-2"></div>
 `.asString();
-
-const dialogs = new DialogController();
 
 document.querySelector<HTMLButtonElement>('#btn-info')!.onclick = async () => {
   const result = await dialogs.info({
@@ -52,7 +51,7 @@ document.querySelector<HTMLButtonElement>('#btn-warn')!.onclick = async () => {
 document.querySelector<HTMLButtonElement>('#btn-error')!.onclick = async () => {
   const result = await dialogs.error({
     title: 'Error',
-    content: 'The file could not be deleted!',
+    content: 'The file could not be deleted!\nPlease try again a later time.',
   });
 
   console.log(result);

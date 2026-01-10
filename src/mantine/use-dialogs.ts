@@ -1,7 +1,7 @@
 import { Button, CloseButton, TextInput } from '@mantine/core';
 import { useModals } from '@mantine/modals';
 import { createElement as h, useState, type ReactElement } from 'react';
-import { DialogController } from '../core/dialogs-controller';
+import { DialogController } from '../core/dialog-controller';
 
 export function useDialogs() {
   const modals = useModals();

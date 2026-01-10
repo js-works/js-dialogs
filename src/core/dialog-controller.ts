@@ -1,4 +1,4 @@
-export { h, html, DialogController };
+export { h, html, svg, DialogController };
 export type { DialogAdapter };
 
 // ===================================================================
@@ -60,7 +60,7 @@ interface ButtonConfig {
 }
 
 interface DialogAdapter<C> {
-  openDialog(params: {
+  openDialog?(params: {
     id: string;
     customDialogTagName: string;
     slotContents: [string, Renderable<C>][];
@@ -75,6 +75,8 @@ interface DialogAdapter<C> {
   renderActionButton?(type: ActionButtonType, text: string, onClick: () => void): Renderable<C>;
 
   renderPromptInput?(labelText: string, value: string): Renderable<C>;
+
+  getDialogIcon?(dialogType: DialogType): SvgContent | null;
 }
 
 // ===================================================================
@@ -110,8 +112,22 @@ class DialogController<C> implements Ctrl<C> {
     text: 'Cancel',
   };
 
-  constructor(config?: DialogAdapter<C>) {
-    this.#adapter = config || (defaultDialogAdapter as any);
+  constructor(adapter?: DialogAdapter<C>) {
+    if (adapter) {
+      const customAdapter: DialogAdapter<C> = {
+        ...(defaultDialogAdapter as any),
+      };
+
+      for (const prop of Object.keys(adapter)) {
+        if (typeof (adapter as any)[prop] === 'function') {
+          (customAdapter as any)[prop] = (adapter as any)[prop].bind(adapter);
+        }
+      }
+
+      this.#adapter = customAdapter;
+    } else {
+      this.#adapter = defaultDialogAdapter as DialogAdapter<any>;
+    }
   }
 
   async info(config: MessageDialogConfig<C>): Promise<Result> {
@@ -208,6 +224,12 @@ class DialogController<C> implements Ctrl<C> {
     const slotContents: any = [];
     const internalSlotContents: any = [];
 
+    const icon = this.#adapter.getDialogIcon?.(dialogType) || null;
+
+    if (icon) {
+      internalSlotContents.push(['dialog-icon', html.raw(icon.getSvgText())]);
+    }
+
     for (const slot of ['title', 'subtitle', 'intro', 'content', 'outro']) {
       slotContents.push([slot, (baseConfig as any)[slot]]);
     }
@@ -253,10 +275,10 @@ class DialogController<C> implements Ctrl<C> {
       }
     };
 
-    const { closeDialog } = this.#adapter.openDialog({
+    const { closeDialog } = this.#adapter.openDialog!({
       id: 'dlg-' + Date.now(),
       customDialogTagName,
-      properties: { init },
+      properties: { 'data-dialog-type': dialogType, init },
       slotContents: slotContents,
       cancel: () => {}, // todo!!!!!!!
     });
@@ -375,7 +397,9 @@ class CustomDialogElement extends HTMLElement {
       <${this.useNativeDialog ? 'dialog' : 'div'}>
         <div class="dialog-content">
           <div class="header">
-            <div id="icon"></div>
+            <div id="icon">
+              <slot name="dialog-icon"></slot>
+            </div>
             <div class="titles">
               <slot name="title" class="title"></slot>
               <slot name="subtitle" class="subtitle"></slot>
@@ -730,6 +754,32 @@ const dialogStyles = css`
     }
   }
 
+  #icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    align-self: center;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    font-size: 175%;
+    padding: 0.25em;
+  }
+
+  :host([data-dialog-type='info']) #icon,
+  :host([data-dialog-type='success']) #icon,
+  :host([data-dialog-type='confirm']) #icon,
+  :host([data-dialog-type='prompt']) #icon {
+    color: ${theme.primaryBackgroundColor};
+    background-color: color-mix(in srgb, ${theme.primaryBackgroundColor}, white 87%);
+  }
+
+  :host([data-dialog-type='warn']) #icon,
+  :host([data-dialog-type='error']) #icon,
+  :host([data-dialog-type='approve']) #icon {
+    color: ${theme.dangerBackgroundColor};
+    background-color: color-mix(in srgb, ${theme.dangerBackgroundColor}, white 87%);
+  }
+
   .dialog-content {
     user-select: none;
     font-size: 16px;
@@ -738,37 +788,17 @@ const dialogStyles = css`
 
     .header {
       display: flex;
-      align-items: flex-start;
-      gap: 0.6em;
+      align-items: center;
+      gap: 0.5em;
       padding: 1em 1.25em 0.125em 1.25em;
       width: 100%;
       box-sizing: border-box;
-
-      #icon {
-        display: none;
-        font-size: 150%;
-        align-self: center;
-
-        .icon-info,
-        .icon-success,
-        .icon-confirm,
-        .icon-prompt {
-          color: ${theme.primaryBackgroundColor};
-        }
-
-        .icon-warn,
-        .icon-error,
-        .icon-approve {
-          color: ${theme.dangerBackgroundColor};
-        }
-      }
 
       .titles {
         display: flex;
         flex-direction: column;
         width: 100%;
         padding: 0.25em 0 0 0;
-        gap: 0.125em;
 
         .title {
           display: block;
@@ -778,8 +808,8 @@ const dialogStyles = css`
 
         .subtitle {
           display: block;
-          font-size: 0.9em;
-          line-height: 0.85em;
+          font-size: 0.8em;
+          line-height: 0.8em;
         }
       }
     }
@@ -790,6 +820,7 @@ const dialogStyles = css`
       gap: 0.5em;
       padding: 0 1.25em 0.75em 1.25em;
       min-height: 2em;
+      line-height: 1.25em;
 
       .intro,
       .content,
@@ -876,6 +907,7 @@ const dialogStyles = css`
   }
 
   .close-button {
+    align-self: flex-start;
     border: none;
     border-radius: ${theme.closeButtonBorderRadius};
     outline: none;
@@ -889,15 +921,15 @@ const dialogStyles = css`
 
     &:hover {
       background-color: light-dark(
-        color-mix(in srgb, white, black 10%),
-        color-mix(in srgb, black, white 10%)
+        color-mix(in srgb, white, black 7%),
+        color-mix(in srgb, black, white 7%)
       );
     }
 
     &:active {
       background-color: light-dark(
-        color-mix(in srgb, #f0f0f0, black 20%),
-        color-mix(in srgb, #f0f0f0, white 20%)
+        color-mix(in srgb, #f0f0f0, black 10%),
+        color-mix(in srgb, #f0f0f0, white 10%)
       );
     }
   }
@@ -948,7 +980,7 @@ const dialogStyles = css`
 // =================================================================
 
 const closeIcon = svg`
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">
       <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
     </svg>
   `;
