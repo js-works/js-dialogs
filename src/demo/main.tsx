@@ -69,8 +69,12 @@ document.querySelector<HTMLButtonElement>('#btn-confirm')!.onclick = async () =>
 
 document.querySelector<HTMLButtonElement>('#btn-approve')!.onclick = async () => {
   const result = await dialogs.approve({
-    title: 'Approval',
-    content: 'Are you really sure the file shall be deleted?\nThis cannot made undone.',
+    title: 'Delete customer',
+    subtitle: 'Custom: #1235 - Jane Doe',
+    content: 'Are you really sure that the customer shall be deleted?\nThis cannot made undone.',
+    buttonTexts: {
+      confirm: 'Delete',
+    },
   });
 
   console.log(result);

@@ -13,6 +13,11 @@ interface BaseDialogConfig<C> {
   intro?: Renderable<C>;
   content?: Renderable<C>;
   outro?: Renderable<C>;
+
+  buttonTexts?: {
+    confirm?: string;
+    cancel?: string;
+  };
 }
 
 interface MessageDialogConfig<C> extends BaseDialogConfig<C> {}
@@ -83,7 +88,7 @@ interface DialogAdapter<C> {
 // Constants
 // ===================================================================
 
-const symbolAbort = Symbol('close');
+const symbolCancel = Symbol('close');
 const symbolConfirm = Symbol('confirm');
 const symbolDecline = Symbol('decline');
 
@@ -94,7 +99,7 @@ const symbolDecline = Symbol('decline');
 class DialogController<C> implements Ctrl<C> {
   readonly #adapter: DialogAdapter<C>;
 
-  readonly #okBtn: ButtonConfig = {
+  readonly #confirmBtn: ButtonConfig = {
     id: symbolConfirm,
     type: 'primary',
     text: 'Ok',
@@ -106,7 +111,7 @@ class DialogController<C> implements Ctrl<C> {
     text: 'Ok',
   };
 
-  readonly #declineBtn: ButtonConfig = {
+  readonly #cancelBtn: ButtonConfig = {
     id: symbolDecline,
     type: 'secondary',
     text: 'Cancel',
@@ -131,11 +136,11 @@ class DialogController<C> implements Ctrl<C> {
   }
 
   async info(config: MessageDialogConfig<C>): Promise<Result> {
-    return this.#openDialog('info', config, null, [this.#okBtn]);
+    return this.#openDialog('info', config, null, [this.#confirmBtn]);
   }
 
   async success(config: MessageDialogConfig<C>): Promise<Result> {
-    return this.#openDialog('success', config, null, [this.#okBtn]);
+    return this.#openDialog('success', config, null, [this.#confirmBtn]);
   }
 
   async warn(config: MessageDialogConfig<C>): Promise<Result> {
@@ -147,11 +152,11 @@ class DialogController<C> implements Ctrl<C> {
   }
 
   async confirm(config: ConfirmDialogConfig<C>): Promise<Result> {
-    return this.#openDialog('confirm', config, null, [this.#okBtn, this.#declineBtn]);
+    return this.#openDialog('confirm', config, null, [this.#confirmBtn, this.#cancelBtn]);
   }
 
   async approve(config: ConfirmDialogConfig<C>): Promise<Result> {
-    return this.#openDialog('approve', config, null, [this.#okBtnDanger, this.#declineBtn]);
+    return this.#openDialog('approve', config, null, [this.#okBtnDanger, this.#cancelBtn]);
   }
 
   async prompt(config: PromptDialogConfig<C>): Promise<Result<string | null>> {
@@ -162,7 +167,7 @@ class DialogController<C> implements Ctrl<C> {
         labelText: config.labelText,
         value: config.value,
       },
-      [this.#okBtn, this.#declineBtn]
+      [this.#confirmBtn, this.#cancelBtn]
     );
   }
 
@@ -172,6 +177,22 @@ class DialogController<C> implements Ctrl<C> {
     extraContent: Record<string, unknown> | null,
     buttons: ButtonConfig[]
   ): Promise<any> {
+    const buttonTexts = baseConfig.buttonTexts || null;
+
+    if (buttonTexts) {
+      buttons = [...buttons];
+      for (let i = 0; i < buttons.length; ++i) {
+        const buttonConfig = { ...buttons[i] };
+        buttons[i] = buttonConfig;
+
+        if (buttonConfig.id === symbolConfirm && buttonTexts.confirm) {
+          buttonConfig.text = buttonTexts.confirm;
+        } else if (buttonConfig.id === symbolCancel && buttonTexts.cancel) {
+          buttonConfig.text = buttonTexts.cancel;
+        }
+      }
+    }
+
     const customDialogTagName = CustomDialogElement.prepare();
 
     let setResult: any;
@@ -189,7 +210,7 @@ class DialogController<C> implements Ctrl<C> {
           setResult({
             confirmed: id === symbolConfirm,
             declined: false,
-            aborted: id === symbolAbort,
+            aborted: id === symbolCancel,
           });
           break;
         case 'confirm':
@@ -197,14 +218,14 @@ class DialogController<C> implements Ctrl<C> {
           setResult({
             confirmed: id === symbolConfirm,
             declined: id !== symbolConfirm,
-            aborted: id === symbolAbort,
+            aborted: id === symbolCancel,
           });
           break;
         case 'prompt':
           setResult({
             confirmed: id === symbolConfirm,
             declined: id === symbolDecline,
-            aborted: id === symbolAbort,
+            aborted: id === symbolCancel,
             value: id === symbolConfirm ? '// TODO' : null,
           });
           break;
@@ -218,7 +239,7 @@ class DialogController<C> implements Ctrl<C> {
 
     const cancel = async (id: Symbol) => {
       await closeDialog();
-      finish(symbolAbort);
+      finish(symbolCancel);
     };
 
     const slotContents: any = [];
@@ -236,7 +257,7 @@ class DialogController<C> implements Ctrl<C> {
 
     const closeButton = (
       this.#adapter.renderCloseButton || this.#renderDefaultCloseButton.bind(this)
-    )('Close', () => onButtonClicked(symbolAbort));
+    )('Close', () => onButtonClicked(symbolCancel));
 
     if (this.#adapter.renderCloseButton) {
       slotContents.push(['close-button', closeButton]);
@@ -761,7 +782,7 @@ const dialogStyles = css`
     align-self: center;
     aspect-ratio: 1 / 1;
     border-radius: 50%;
-    font-size: 175%;
+    font-size: 150%;
     padding: 0.25em;
   }
 
@@ -790,7 +811,7 @@ const dialogStyles = css`
       display: flex;
       align-items: center;
       gap: 0.5em;
-      padding: 1em 1.25em 0.125em 1.25em;
+      padding: 1em 1.25em 0.4em 1.25em;
       width: 100%;
       box-sizing: border-box;
 
@@ -808,8 +829,9 @@ const dialogStyles = css`
 
         .subtitle {
           display: block;
-          font-size: 0.8em;
-          line-height: 0.8em;
+          font-size: 0.85em;
+          line-height: 0.85em;
+          padding: 0 1px;
         }
       }
     }
