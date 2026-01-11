@@ -1,4 +1,4 @@
-export { h, html, svg, DialogController };
+export { css, h, html, svg, DialogController };
 export type { DialogAdapter };
 
 // ===================================================================
@@ -29,6 +29,8 @@ interface PromptDialogConfig<C> extends BaseDialogConfig<C> {
   value?: string | null;
 }
 
+interface InputDialogConfig<C> extends BaseDialogConfig<C> {}
+
 interface Ctrl<C> {
   info(config: MessageDialogConfig<C>): Promise<Result>;
   success(config: MessageDialogConfig<C>): Promise<Result>;
@@ -37,6 +39,7 @@ interface Ctrl<C> {
   confirm(config: ConfirmDialogConfig<C>): Promise<Result>;
   approve(config: ConfirmDialogConfig<C>): Promise<Result>;
   prompt(config: PromptDialogConfig<C>): Promise<Result<string | null>>;
+  input(config: InputDialogConfig<C>): Promise<Result>;
 }
 
 type DialogType =
@@ -81,7 +84,9 @@ interface DialogAdapter<C> {
 
   renderPromptInput?(labelText: string, value: string): Renderable<C>;
 
-  getDialogIcon?(dialogType: DialogType, defaultIcon: SvgContent): SvgContent | null;
+  getDialogIcon?(dialogType: DialogType, defaultIcon: SvgContent | null): SvgContent | null;
+
+  getStyles?(tagName: string): CssContent;
 }
 
 // ===================================================================
@@ -98,6 +103,7 @@ const symbolDecline = Symbol('decline');
 
 class DialogController<C> implements Ctrl<C> {
   readonly #adapter: DialogAdapter<C>;
+  #initialized = false;
 
   readonly #confirmBtn: ButtonConfig = {
     id: symbolConfirm,
@@ -112,7 +118,7 @@ class DialogController<C> implements Ctrl<C> {
   };
 
   readonly #cancelBtn: ButtonConfig = {
-    id: symbolDecline,
+    id: symbolCancel,
     type: 'secondary',
     text: 'Cancel',
   };
@@ -171,12 +177,22 @@ class DialogController<C> implements Ctrl<C> {
     );
   }
 
+  async input(config: ConfirmDialogConfig<C>): Promise<Result> {
+    return this.#openDialog('input', config, null, [this.#okBtnDanger, this.#cancelBtn]);
+  }
+
   async #openDialog(
     dialogType: DialogType,
     baseConfig: BaseDialogConfig<C>,
     extraContent: Record<string, unknown> | null,
     buttons: ButtonConfig[]
   ): Promise<any> {
+    const customDialogTagName = CustomDialogElement.prepare();
+
+    if (!this.#initialized) {
+      this.#initialize(customDialogTagName);
+    }
+
     const buttonTexts = baseConfig.buttonTexts || null;
 
     if (buttonTexts) {
@@ -192,8 +208,6 @@ class DialogController<C> implements Ctrl<C> {
         }
       }
     }
-
-    const customDialogTagName = CustomDialogElement.prepare();
 
     let setResult: any;
 
@@ -309,6 +323,19 @@ class DialogController<C> implements Ctrl<C> {
     return resultPromise;
   }
 
+  #initialize(tagName: string) {
+    const styles = this.#adapter.getStyles?.(tagName) || null;
+    console.log(tagName);
+
+    if (styles) {
+      const styleSheet = new CSSStyleSheet();
+      styleSheet.replaceSync(styles.getCssText());
+      document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet];
+    }
+
+    this.#initialized = true;
+  }
+
   #getDefaultDialogIcon(dialogType: DialogType) {
     switch (dialogType) {
       case 'info':
@@ -326,7 +353,7 @@ class DialogController<C> implements Ctrl<C> {
       case 'prompt':
         return promptIcon;
       default:
-        throw new Error('Illegal dialog type: ' + dialogType);
+        return null;
     }
   }
 
@@ -391,8 +418,8 @@ const defaultDialogAdapter: DialogAdapter<HTMLElement> = {
     });
 
     for (const [slotName, slotContent] of slotContents) {
-      const elem = convertToNodes(slotContent);
-      customDialogElem.shadowRoot!.querySelector(`slot[name="${slotName}"]`)!.append(elem);
+      const nodes = convertToNodes(slotContent);
+      customDialogElem.shadowRoot!.querySelector(`slot[name="${slotName}"]`)!.append(...nodes);
     }
 
     document.body.append(customDialogElem);
@@ -403,20 +430,22 @@ const defaultDialogAdapter: DialogAdapter<HTMLElement> = {
   },
 };
 
-function convertToNodes(content: Renderable<HTMLElement>) {
+function convertToNodes(content: Renderable<HTMLElement>): Node[] {
   if (content === undefined || content === null) {
-    return document.createTextNode('');
-  }
-
-  if (typeof content === 'string') {
+    return [document.createTextNode('')];
+  } else if (typeof content === 'string') {
     const lines = content.split(/\r?\n/);
 
     return lines.length === 1
-      ? document.createTextNode(lines[0])
-      : h('span', null, ...lines.map((line) => h('div', null, line)));
+      ? [document.createTextNode(lines[0])]
+      : [h('span', null, ...lines.map((line) => h('div', null, line)))];
+  } else if (typeof content === 'number') {
+    return [document.createTextNode(content.toString())];
+  } else if (content instanceof HtmlContent) {
+    return [toHtmlElement((content as HtmlContent).asString())];
   }
 
-  return toNode(content);
+  return [content];
 }
 
 // =================================================================
@@ -627,15 +656,17 @@ function html(strings: TemplateStringsArray, ...values: (string | null)[]) {
 
 html.raw = (htmlText: string) => new HtmlContent(htmlText);
 
-function toHtmlElement<T = HTMLElement>(htmlText: string) {
-  const elem = document.createElement('div');
-  elem.innerHTML = htmlText;
+function toHtmlElement<T extends HTMLElement = HTMLElement>(htmlText: string): T {
+  const container = document.createElement('div');
+  container.innerHTML = htmlText;
 
-  if (elem.childElementCount !== 1) {
+  if (container.childElementCount !== 1) {
     throw new Error('Must have exactly one root element');
   }
 
-  return elem.firstElementChild as T;
+  const elem = container.firstElementChild as T;
+  elem.remove();
+  return elem;
 }
 
 function toNode(content: Node | string | number | HtmlContent | null | undefined): Node {
@@ -831,8 +862,7 @@ const dialogStyles = css`
   .dialog-content {
     user-select: none;
     font-size: 16px;
-    font-family:
-      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
     .header {
       display: flex;

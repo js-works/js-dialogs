@@ -17,6 +17,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
     <button id="btn-confirm" class="btn">Confirm (vanilla)</button>
     <button id="btn-approve" class="btn">Approve (vanilla)</button>
     <button id="btn-prompt" class="btn">Prompt (vanilla)</button>
+    <button id="btn-input" class="btn">Input (vanilla)</button>
   </div>
   <div id="column-2"></div>
 `.asString();
@@ -88,6 +89,33 @@ document.querySelector<HTMLButtonElement>('#btn-prompt')!.onclick = async () => 
     title: 'Input',
     labelText: 'Please enter your name',
     value: 'Jane Doe',
+  });
+
+  console.log(result);
+};
+
+document.querySelector<HTMLButtonElement>('#btn-input')!.onclick = async () => {
+  const result = await dialogs.input({
+    title: 'Switch user',
+    content: html`
+      <fieldset>
+        <div>
+          <label>
+            Username:
+            <input />
+          </label>
+        </div>
+        <div>
+          <label>
+            Password:
+            <input type="password" />
+          </label>
+        </div>
+      </fieldset>
+    `,
+    buttonTexts: {
+      confirm: 'Switch',
+    },
   });
 
   console.log(result);
