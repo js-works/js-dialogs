@@ -59,9 +59,12 @@ document.querySelector<HTMLButtonElement>('#btn-error')!.onclick = async () => {
 
 document.querySelector<HTMLButtonElement>('#btn-confirm')!.onclick = async () => {
   const result = await dialogs.confirm({
-    title: 'Confirmation',
-    content: 'Are you really sure the file shall be deleted?',
-    outro: 'This cannot made undone.',
+    title: 'Delete customer',
+    content:
+      'Are you really sure that customer #1235 (Jane Doe) shall be deleted?\nThis cannot made undone.',
+    buttonTexts: {
+      confirm: 'Delete',
+    },
   });
 
   console.log(result);
@@ -70,7 +73,7 @@ document.querySelector<HTMLButtonElement>('#btn-confirm')!.onclick = async () =>
 document.querySelector<HTMLButtonElement>('#btn-approve')!.onclick = async () => {
   const result = await dialogs.approve({
     title: 'Delete customer',
-    subtitle: 'Custom: #1235 - Jane Doe',
+    subtitle: 'Customer: #1235 - Jane Doe',
     content: 'Are you really sure that the customer shall be deleted?\nThis cannot made undone.',
     buttonTexts: {
       confirm: 'Delete',
@@ -141,9 +144,12 @@ function MantineDialogDemo() {
 
   const onConfirmClick = async () => {
     const result = await dialogs.confirm({
-      title: 'Error',
-      subtitle: 'Bla bla bla...',
-      content: 'Happy New Year 2026',
+      title: 'Delete customer',
+      content:
+        'Are you really sure that customer #1235 (Jane Doe) shall be deleted?\nThis cannot made undone.',
+      buttonTexts: {
+        confirm: 'Delete',
+      },
     });
 
     console.log(result);
@@ -151,9 +157,12 @@ function MantineDialogDemo() {
 
   const onApproveClick = async () => {
     const result = await dialogs.approve({
-      title: 'Error',
-      subtitle: 'Bla bla bla...',
-      content: 'Happy New Year 2026',
+      title: 'Delete customer',
+      subtitle: 'Customer: #1235 - Jane Doe',
+      content: 'Are you really sure that the customer shall be deleted?\nThis cannot made undone.',
+      buttonTexts: {
+        confirm: 'Delete',
+      },
     });
 
     console.log(result);

@@ -801,6 +801,10 @@ const dialogStyles = css`
     background-color: color-mix(in srgb, ${theme.dangerBackgroundColor}, white 87%);
   }
 
+  #icon:is(:has(> slot:empty)) {
+    display: none;
+  }
+
   .dialog-content {
     user-select: none;
     font-size: 16px;
