@@ -71,6 +71,10 @@ export function useDialogs() {
         renderPromptInput(labelText, value) {
           return h(TextInput as any, { defaultValue: value, label: labelText });
         },
+
+        getDialogIcon() {
+          return null;
+        },
       })
   );
 
