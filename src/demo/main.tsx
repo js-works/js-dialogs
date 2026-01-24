@@ -198,7 +198,7 @@ function MantineDialogDemo() {
 
   const onPromptClick = async () => {
     const result = await dialogs.prompt({
-      title: 'Prompt',
+      title: 'Input required',
       labelText: 'Please enter your name',
       value: 'Jane',
     });
