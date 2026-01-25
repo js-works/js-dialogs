@@ -2,7 +2,7 @@ import { html } from '../main/index.js';
 import { createRoot } from 'react-dom/client';
 import { Button, MantineProvider } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
-import { useDialogs } from '../mantine/use-dialogs.js';
+import { useMantineDialogs } from '../mantine/use-mantine-dialogs.js';
 import { dialogs } from './vanilla-dialogs.js';
 
 import './style.css';
@@ -89,7 +89,7 @@ const container = document.querySelector('#column-2')!;
 const root = createRoot(container);
 
 function MantineDialogDemo() {
-  const dialogs = useDialogs();
+  const dialogs = useMantineDialogs();
 
   const onInfoClick = async () => {
     const result = await dialogs.info({
