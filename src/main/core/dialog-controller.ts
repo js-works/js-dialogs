@@ -1,20 +1,16 @@
 import { toNode } from "./dom.js"
 import { h, html, toHtmlElement, HtmlContent } from "./html.js"
-import { css, CssContent } from "./css.js"
-import { svg, SvgContent } from "./svg.js"
-import { approveIcon, confirmIcon, errorIcon, infoIcon, successIcon, warnIcon } from "./default-icons.js";
-import { type Plugin } from "./plugin.js"
+import { css } from "./css.js"
+import { svg } from "./svg.js"
+import type { ActionButtonType, DialogAdapter, DialogControllerConfig, DialogType, Plugin, Renderable } from "./types.js"
 
 import { dialogStyles } from "./dialog.styles.js";
 
 export { createDialogsController, css, h, html, svg, type DialogsController };
-export type { DialogAdapter, Renderable };
 
 // ===================================================================
 // Types
 // ===================================================================
-
-type Renderable<C> = C | string | number | null | undefined;
 
 interface BaseDialogConfig<C> {
   title?: Renderable<C>;
@@ -42,16 +38,6 @@ interface DialogsController<C> {
   approve(config: ConfirmDialogConfig<C>): Promise<Result>;
 }
 
-type DialogType =
-  | 'info'
-  | 'success'
-  | 'warn'
-  | 'error'
-  | 'confirm'
-  | 'approve';
-
-type ActionButtonType = 'primary' | 'secondary' | 'danger';
-
 interface Result<T = null> {
   readonly confirmed: boolean;
   readonly denied: boolean;
@@ -65,25 +51,6 @@ interface ButtonConfig {
   text: string;
 }
 
-interface DialogAdapter<C> {
-  openDialog?(params: {
-    id: string;
-    customDialogTagName: string;
-    slotContents: [string, Renderable<C>][];
-    properties: Record<string, unknown>;
-    cancel(): void;
-  }): {
-    closeDialog: () => Promise<void>;
-  };
-
-  renderCloseButton?(text: string, onClick: () => void): Renderable<C>;
-
-  renderActionButton?(type: ActionButtonType, text: string, onClick: () => void): Renderable<C>;
-
-  getDialogIcon?(dialogType: DialogType, defaultIcon: SvgContent | null): SvgContent | null;
-
-  getStyles?(tagName: string): CssContent;
-}
 
 // ===================================================================
 // Constants
@@ -107,11 +74,21 @@ function createDialogsController<C>(params: {
 }): DialogsController<C>
 
 function createDialogsController(params?: any): DialogsController<any> {
-  const adapter = params?.adapter ?? defaultDialogAdapter;
-  return new DefaultDialogsController(adapter);
+  const adapter = params?.adapter || defaultDialogAdapter;
+    
+  let mappedConfig: DialogControllerConfig = params?.config || {};
+  const plugins = params?.plugins || [];
+
+  for (const plugin of plugins) {
+    if (plugin.mapDialogControllerConfig)
+    mappedConfig = {...mappedConfig, ...plugin.mapDialogControllerConfig(mappedConfig)};
+  }
+
+  return new DefaultDialogsController(mappedConfig, adapter);
 }
 
 class DefaultDialogsController<C> implements DialogsController<C> {
+  readonly #config: DialogControllerConfig;
   readonly #adapter: DialogAdapter<C>;
   #initialized = false;
 
@@ -133,7 +110,9 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     text: 'Cancel',
   };
 
-  constructor(adapter?: DialogAdapter<C>) {
+  constructor(config: DialogControllerConfig, adapter?: DialogAdapter<C>) {
+    this.#config = config;
+
     if (adapter) {
       const customAdapter: DialogAdapter<C> = {
         ...(defaultDialogAdapter as any),
@@ -245,9 +224,9 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     const slotContents: any = [];
     const internalSlotContents: any = [];
 
-    const icon = this.#adapter.getDialogIcon
-      ? this.#adapter.getDialogIcon(dialogType, this.#getDefaultDialogIcon(dialogType)) || null
-      : this.#getDefaultDialogIcon(dialogType);
+    const icon = this.#config.getDialogIcon
+      ? this.#config.getDialogIcon(dialogType) || null
+      : null
 
     if (icon) {
       internalSlotContents.push(['dialog-icon', html.raw(icon.getSvgText())]);
@@ -307,25 +286,6 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     }
 
     this.#initialized = true;
-  }
-
-  #getDefaultDialogIcon(dialogType: DialogType) {
-    switch (dialogType) {
-      case 'info':
-        return infoIcon;
-      case 'success':
-        return successIcon;
-      case 'warn':
-        return warnIcon;
-      case 'error':
-        return errorIcon;
-      case 'approve':
-        return approveIcon;
-      case 'confirm':
-        return confirmIcon;
-      default:
-        return null;
-    }
   }
 
   #renderDefaultCloseButton(text: string, onClick: () => void) {

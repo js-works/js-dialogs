@@ -1,6 +1,39 @@
-import { svg } from "./svg.js"
+import { svg, SvgContent } from "../core/svg.js";
+import type { Plugin, DialogType, DialogControllerConfig } from "../core/types.js";
+ 
+export { DefaultIconsPlugin }
 
-export { approveIcon, confirmIcon, errorIcon, infoIcon, promptIcon, successIcon, warnIcon }
+class DefaultIconsPlugin implements Plugin {
+  mapDialogControllerConfig(config: DialogControllerConfig): DialogControllerConfig {
+    return {
+      getDialogIcon: (dialogType) => {
+        const icon = this.#getDefaultDialogIcon(dialogType);
+        return icon || config.getDialogIcon?.(dialogType) || null;
+      }
+    }
+  }
+
+  #getDefaultDialogIcon(dialogType: DialogType): SvgContent | null {
+    switch (dialogType) {
+      case 'info':
+        return infoIcon;
+      case 'success':
+        return successIcon;
+      case 'warn':
+        return warnIcon;
+      case 'error':
+        return errorIcon;
+      case 'approve':
+        return approveIcon;
+      case 'confirm':
+        return confirmIcon;
+      default:
+        return null;
+    }
+  }
+}
+
+// 
 
 const infoIcon2 = svg`
   <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">

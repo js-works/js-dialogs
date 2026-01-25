@@ -2,7 +2,7 @@ import { createDialogsController } from '../main/core/dialog-controller.js';
 import { Button, CloseButton } from '@mantine/core';
 import { useModals } from '@mantine/modals';
 import { createElement as h, useState, type ReactNode } from 'react';
-import { type DialogAdapter } from '../main/core/dialog-controller.js';
+import { type DialogAdapter } from '../main/core/types.js'
 
 export function useMantineDialogs() {
   const adapter = useMantineDialogAdapter();
