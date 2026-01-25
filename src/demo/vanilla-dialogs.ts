@@ -1,14 +1,6 @@
-import { css, DialogController } from '../core/dialog-controller.js';
+import { createDialogsController } from '../main/core/dialog-controller.js';
 
 export { dialogs };
 
-const dialogs = new DialogController({
-  getStyles(tagName) {
-    const ret = css`
-      ${tagName} {
-      }
-    `;
-    console.log(ret.getCssText());
-    return ret;
-  },
-});
+const dialogs = createDialogsController();
+

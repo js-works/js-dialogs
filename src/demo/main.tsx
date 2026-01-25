@@ -1,6 +1,6 @@
-import { html, DialogController } from '../core/dialog-controller.ts';
+import { html } from '../main/index.js';
 import { createRoot } from 'react-dom/client';
-import { Button, MantineProvider, Text } from '@mantine/core';
+import { Button, MantineProvider } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { useDialogs } from '../mantine/use-dialogs.js';
 import { dialogs } from './vanilla-dialogs.js';
@@ -16,8 +16,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
     <button id="btn-error" class="btn">Error (vanilla)</button>
     <button id="btn-confirm" class="btn">Confirm (vanilla)</button>
     <button id="btn-approve" class="btn">Approve (vanilla)</button>
-    <button id="btn-prompt" class="btn">Prompt (vanilla)</button>
-    <button id="btn-input" class="btn">Input (vanilla)</button>
   </div>
   <div id="column-2"></div>
 `.asString();
@@ -78,43 +76,6 @@ document.querySelector<HTMLButtonElement>('#btn-approve')!.onclick = async () =>
     content: 'Are you really sure that the customer shall be deleted?\nThis cannot made undone.',
     buttonTexts: {
       confirm: 'Delete',
-    },
-  });
-
-  console.log(result);
-};
-
-document.querySelector<HTMLButtonElement>('#btn-prompt')!.onclick = async () => {
-  const result = await dialogs.prompt({
-    title: 'Input',
-    labelText: 'Please enter your name',
-    value: 'Jane Doe',
-  });
-
-  console.log(result);
-};
-
-document.querySelector<HTMLButtonElement>('#btn-input')!.onclick = async () => {
-  const result = await dialogs.input({
-    title: 'Switch user',
-    content: html`
-      <fieldset>
-        <div>
-          <label>
-            Username:
-            <input />
-          </label>
-        </div>
-        <div>
-          <label>
-            Password:
-            <input type="password" />
-          </label>
-        </div>
-      </fieldset>
-    `,
-    buttonTexts: {
-      confirm: 'Switch',
     },
   });
 
@@ -196,16 +157,6 @@ function MantineDialogDemo() {
     console.log(result);
   };
 
-  const onPromptClick = async () => {
-    const result = await dialogs.prompt({
-      title: 'Input required',
-      labelText: 'Please enter your name',
-      value: 'Jane',
-    });
-
-    console.log(result);
-  };
-
   return (
     <>
       <Button onClick={onInfoClick}>Info (Mantine)</Button>
@@ -214,7 +165,6 @@ function MantineDialogDemo() {
       <Button onClick={onErrorClick}>Error (Mantine)</Button>
       <Button onClick={onConfirmClick}>Confirm (Mantine)</Button>
       <Button onClick={onApproveClick}>Approve (Mantine)</Button>
-      <Button onClick={onPromptClick}>Prompt (Mantine)</Button>
     </>
   );
 }

@@ -1,15 +1,13 @@
 import { Button, CloseButton, TextInput } from '@mantine/core';
 import { useModals } from '@mantine/modals';
 import { createElement as h, useState, type ReactElement } from 'react';
-import { DialogController } from '../core/dialog-controller';
+import { createDialogsController } from '../main/core/dialog-controller.js';
 
 export function useDialogs() {
   const modals = useModals();
-
-  const [dialogs] = useState(
-    () =>
-      new DialogController<ReactElement>({
-        openDialog(data: any) {
+  const [dialogs] = useState(() => 
+      createDialogsController<ReactElement>({
+        adapter: {openDialog(data: any) {
           const slots = [] as any;
 
           data.slotContents.forEach((entry: any, idx: number) => {
@@ -67,15 +65,7 @@ export function useDialogs() {
             text
           );
         },
-
-        renderPromptInput(labelText, value) {
-          return h(TextInput as any, { defaultValue: value, label: labelText });
-        },
-
-        getDialogIcon() {
-          return null;
-        },
-      })
+      } })
   );
 
   return dialogs;

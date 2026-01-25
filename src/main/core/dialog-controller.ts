@@ -2,12 +2,13 @@ import { toNode } from "./dom.js"
 import { h, html, toHtmlElement, HtmlContent } from "./html.js"
 import { css, CssContent } from "./css.js"
 import { svg, SvgContent } from "./svg.js"
-import { approveIcon, confirmIcon, errorIcon, infoIcon, promptIcon, successIcon, warnIcon } from "./default-icons.js";
+import { approveIcon, confirmIcon, errorIcon, infoIcon, successIcon, warnIcon } from "./default-icons.js";
+import { type Plugin } from "./plugin.js"
 
 import { dialogStyles } from "./dialog.styles.js";
 
-export { css, h, html, svg, DialogController };
-export type { DialogAdapter };
+export { createDialogsController, css, h, html, svg, type DialogsController };
+export type { DialogAdapter, Renderable };
 
 // ===================================================================
 // Types
@@ -32,22 +33,13 @@ interface MessageDialogConfig<C> extends BaseDialogConfig<C> {}
 
 interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {}
 
-interface PromptDialogConfig<C> extends BaseDialogConfig<C> {
-  labelText?: Renderable<C>;
-  value?: string | null;
-}
-
-interface InputDialogConfig<C> extends BaseDialogConfig<C> {}
-
-interface Ctrl<C> {
+interface DialogsController<C> {
   info(config: MessageDialogConfig<C>): Promise<Result>;
   success(config: MessageDialogConfig<C>): Promise<Result>;
   warn(config: MessageDialogConfig<C>): Promise<Result>;
   error(config: MessageDialogConfig<C>): Promise<Result>;
   confirm(config: ConfirmDialogConfig<C>): Promise<Result>;
   approve(config: ConfirmDialogConfig<C>): Promise<Result>;
-  prompt(config: PromptDialogConfig<C>): Promise<Result<string | null>>;
-  input(config: InputDialogConfig<C>): Promise<Result>;
 }
 
 type DialogType =
@@ -56,9 +48,7 @@ type DialogType =
   | 'warn'
   | 'error'
   | 'confirm'
-  | 'approve'
-  | 'prompt'
-  | 'input';
+  | 'approve';
 
 type ActionButtonType = 'primary' | 'secondary' | 'danger';
 
@@ -90,8 +80,6 @@ interface DialogAdapter<C> {
 
   renderActionButton?(type: ActionButtonType, text: string, onClick: () => void): Renderable<C>;
 
-  renderPromptInput?(labelText: string, value: string): Renderable<C>;
-
   getDialogIcon?(dialogType: DialogType, defaultIcon: SvgContent | null): SvgContent | null;
 
   getStyles?(tagName: string): CssContent;
@@ -101,7 +89,7 @@ interface DialogAdapter<C> {
 // Constants
 // ===================================================================
 
-const symbolCancel = Symbol('close');
+const symbolCancel = Symbol('cancel');
 const symbolConfirm = Symbol('confirm');
 const symbolDecline = Symbol('decline');
 
@@ -109,7 +97,21 @@ const symbolDecline = Symbol('decline');
 // DialogController
 // ===================================================================
 
-class DialogController<C> implements Ctrl<C> {
+function createDialogsController(params?: {
+  plugins?: Plugin[]
+}): DialogsController<Node>;
+  
+function createDialogsController<C>(params: {
+  adapter: DialogAdapter<C>
+  plugins?: Plugin[]
+}): DialogsController<C>
+
+function createDialogsController(params?: any): DialogsController<any> {
+  const adapter = params?.adapter ?? defaultDialogAdapter;
+  return new DefaultDialogsController(adapter);
+}
+
+class DefaultDialogsController<C> implements DialogsController<C> {
   readonly #adapter: DialogAdapter<C>;
   #initialized = false;
 
@@ -173,22 +175,6 @@ class DialogController<C> implements Ctrl<C> {
     return this.#openDialog('approve', config, null, [this.#okBtnDanger, this.#cancelBtn]);
   }
 
-  async prompt(config: PromptDialogConfig<C>): Promise<Result<string | null>> {
-    return this.#openDialog(
-      'prompt',
-      config,
-      {
-        labelText: config.labelText,
-        value: config.value,
-      },
-      [this.#confirmBtn, this.#cancelBtn]
-    );
-  }
-
-  async input(config: ConfirmDialogConfig<C>): Promise<Result> {
-    return this.#openDialog('input', config, null, [this.#okBtnDanger, this.#cancelBtn]);
-  }
-
   async #openDialog(
     dialogType: DialogType,
     baseConfig: BaseDialogConfig<C>,
@@ -243,14 +229,6 @@ class DialogController<C> implements Ctrl<C> {
             aborted: id === symbolCancel,
           });
           break;
-        case 'prompt':
-          setResult({
-            confirmed: id === symbolConfirm,
-            declined: id === symbolDecline,
-            aborted: id === symbolCancel,
-            value: id === symbolConfirm ? '// TODO' : null,
-          });
-          break;
       }
     };
 
@@ -301,19 +279,6 @@ class DialogController<C> implements Ctrl<C> {
       }
     }
 
-    if (dialogType === 'prompt') {
-      const promptInput = (this.#adapter.renderPromptInput || this.#renderDefaultPromptInput)(
-        (extraContent as any).labelText,
-        (extraContent as any).value
-      );
-
-      if (this.#adapter.renderPromptInput) {
-        slotContents.push(['extra-content', promptInput]);
-      } else {
-        internalSlotContents.push(['extra-content', promptInput]);
-      }
-    }
-
     const init = (conatainer: HTMLElement) => {
       for (const [slotName, slotContent] of internalSlotContents) {
         conatainer.querySelector(`slot[name=${slotName}]`)!.appendChild(toNode(slotContent));
@@ -358,8 +323,6 @@ class DialogController<C> implements Ctrl<C> {
         return approveIcon;
       case 'confirm':
         return confirmIcon;
-      case 'prompt':
-        return promptIcon;
       default:
         return null;
     }
@@ -384,23 +347,6 @@ class DialogController<C> implements Ctrl<C> {
         onclick: onClick,
       },
       text
-    );
-  }
-
-  #renderDefaultPromptInput(labelText: string, value: string) {
-    return toHtmlElement(
-      html`
-        <label class="prompt-label">
-          ${labelText?.toString() || ''}
-          <input
-            name="input"
-            autofocus
-            autocomplete="off"
-            class="prompt-text-field"
-            value=${value || ''}
-          />
-        </label>
-      `.asString()
     );
   }
 }
