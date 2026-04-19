@@ -70,6 +70,10 @@ type I18n = {
 };
 
 type I18nConfig = {
+  getPrimaryLocale?(): Locale;
+  onPrimaryLocaleChange?(listener: ChangeListener): Unsubscribe;
+  getFallbackLocales?(): Locale[];
+  onFallbackLocalesChange?(listener: ChangeListener): Unsubscribe;
   onAddText?(locale: Locale, namespace: Namespace, key: TranslationKey): void;
   // More to come in futue.
 };
@@ -86,68 +90,63 @@ type LocalizeControllerHost = {
   addController(controller: LocalizeController): void;
 };
 
-// === constants =====================================================
+// === local state =============================================================
 
-let documentLocale = 'en-US';
-let mutationObserver: MutationObserver | null = null;
+// Will be created lazily (see: getI18n)
+let i18n: I18n | null = null;
 
-if (isClientSide()) {
-  documentLocale = document.documentElement.getAttribute('lang') || 'en-US';
+// State used by function `initI18n` - shall only be callable once.
+let initI18nHasAlreadyBeenCalled = false;
 
-  mutationObserver = new MutationObserver(() => {
-    documentLocale = document.documentElement.getAttribute('lang') || 'en-US';
-  });
-
-  mutationObserver.observe(document.getRootNode(), {
-    attributes: true,
-    attributeFilter: ['lang'],
-  });
-}
-
-// === things required for default I18n object =======================
-
-let innerI18n: I18n | null = null;
+// Shared state betweeen functions `initI18n` and `getI18n`.
 let i18nConfig: I18nConfig | null = null;
-const translationsToAdd: Record<Locale, TranslationBundle[]>[] = [];
+let i18nHasAlreadyBeenInitialized = false;
 
-const getInnerI18n: () => I18n = () => {
-  if (innerI18n === null) {
-    innerI18n = createI18n(i18nConfig ?? {});
+// === exported functions ======================================================
 
-    for (const translations of translationsToAdd) {
-      innerI18n.addTexts(translations);
-    }
-
-    translationsToAdd.length = 0;
+function initI18n(config: I18nConfig) {
+  if (initI18nHasAlreadyBeenCalled !== null) {
+    throw new Error("Function 'initI18n' can only be called once.");
   }
 
-  return innerI18n;
-};
+  if (i18nHasAlreadyBeenInitialized) {
+    throw new Error("Tool late to call function 'initI18n' - i18n has already been initialized.");
+  }
 
-const i18n: I18n = {
-  addTexts: (texts) => {
-    if (innerI18n == null) {
-      translationsToAdd.push(texts);
-    } else {
-      getInnerI18n().addTexts(texts);
-    }
-  },
-
-  getText(locale, category, key, params = null) {
-    return getInnerI18n().getText(locale, category, key, params as any);
-  },
-
-  getLocalizer: (locale) => getInnerI18n().getLocalizer(locale),
-  getPrimaryLocale: () => getInnerI18n().getPrimaryLocale(),
-  onPrimaryLocaleChange: (listener) => getInnerI18n().onPrimaryLocaleChange(listener),
-  getFallbackLocales: () => getInnerI18n().getFallbackLocales(),
-  onFallbackLocalesChange: (listener) => getInnerI18n().onFallbackLocalesChange(listener),
-};
-
-// === exported functions ============================================
+  initI18nHasAlreadyBeenCalled = true;
+  i18nConfig = { ...config };
+}
 
 function getI18n() {
+  let config: I18nConfig | null = null;
+
+  if (!i18n) {
+    const getConfig = () => {
+      if (config) {
+        return config;
+      }
+
+      config = i18nConfig ?? {};
+
+      if (isClientSide() && !config.getPrimaryLocale && !config.onPrimaryLocaleChange) {
+        const monitor = new DocumentLocaleMonitor(document);
+        config.getPrimaryLocale = () => monitor.getLocale() || 'en-US';
+        config.onPrimaryLocaleChange = (listener) => monitor.onChange(listener);
+      }
+
+      i18nConfig = null; // Not needed any longer.
+      return config;
+    };
+
+    i18n = new I18nImpl(getConfig, true);
+  }
+
   return i18n;
+}
+
+function createI18n(config: I18nConfig = {}): I18n {
+  const clonedConfig = { ...config };
+  return new I18nImpl(() => clonedConfig);
 }
 
 function createTextCategory<T extends TranslationMap>(namespace: string): TextCategory<T> {
@@ -157,22 +156,6 @@ function createTextCategory<T extends TranslationMap>(namespace: string): TextCa
     partial: (translations) =>
       freeze({ namespace, translations: translations as TranslationMap, partial: true }),
   });
-}
-
-function createI18n(config: I18nConfig = {}): I18n {
-  return new I18nImpl(config);
-}
-
-function initI18n(config: I18nConfig) {
-  if (i18nConfig !== null) {
-    throw new Error("Function 'i18n' can only be called once.");
-  }
-
-  if (innerI18n != null) {
-    throw new Error("Function 'initI18n' has already been initialized.");
-  }
-
-  i18nConfig = config;
 }
 
 // === internal functions ============================================
@@ -195,20 +178,28 @@ function isClientSide() {
   );
 }
 
-// === internal classes ==============================================
+// === internal classes ========================================================
 
 class I18nImpl implements I18n {
-  #config: I18nConfig;
+  #config: I18nConfig | null = null;
+  readonly #getConfig: () => I18nConfig;
   #primaryLocaleListners: ChangeListener[] = [];
   #fallbackLocalesListners: ChangeListener[] = [];
   #dict: Record<Locale, Record<Namespace, Record<string, Translation>>> = createRecord();
   #localizerByLocale: Record<Locale, Localizer> = createRecord();
+  #translationsToAdd: Record<Locale, TranslationBundle[]>[] | null;
 
-  constructor(config: I18nConfig) {
-    this.#config = config;
+  constructor(getConfig: () => I18nConfig, addTranslationsLazily = false) {
+    this.#getConfig = getConfig;
+    this.#translationsToAdd = addTranslationsLazily ? [] : null;
   }
 
   addTexts(texts: Record<Locale, TranslationBundle[]>): void {
+    if (this.#translationsToAdd) {
+      this.#translationsToAdd.push(texts);
+      return;
+    }
+
     for (const [locale, bundles] of Object.entries(texts)) {
       let byNamespace = this.#dict![locale];
 
@@ -223,9 +214,10 @@ class I18nImpl implements I18n {
         for (const [key, value] of Object.entries(bundle.translations)) {
           let translations = byNamespace[namespace];
           translations[key] = value;
+          const config = this.#getConfig();
 
-          if (this.#config.onAddText) {
-            this.#config.onAddText(locale, namespace, key);
+          if (config.onAddText) {
+            config.onAddText(locale, namespace, key);
           }
         }
       }
@@ -251,6 +243,7 @@ class I18nImpl implements I18n {
     key: string,
     params: Record<string, Translation> | null = null
   ) {
+    this.#init();
     return this.#getText(new Intl.Locale(locale), category.getNamespace(), key, params ?? null);
   }
 
@@ -350,6 +343,22 @@ class I18nImpl implements I18n {
 
     return translation(params);
   }
+
+  #init() {
+    if (this.#config) {
+      return;
+    }
+
+    this.#config = this.#getConfig() ?? {};
+
+    if (this.#translationsToAdd) {
+      for (const translations of this.#translationsToAdd) {
+        this.addTexts(translations);
+      }
+
+      this.#translationsToAdd = null;
+    }
+  }
 }
 
 class LocalizerImpl implements Localizer {
@@ -431,5 +440,63 @@ class LocalizeController extends LocalizerImpl {
       this.#unsubscribe = null;
       unsubscribe();
     }
+  }
+}
+
+class DocumentLocaleMonitor {
+  #document: Document;
+  #defaultLocale: Locale | null;
+  #locale: Locale | null;
+  #listeners = new Set<ChangeListener>();
+  #mutationObserver: MutationObserver | null = null;
+
+  constructor(document: Document, defaultLocale = null) {
+    this.#document = document;
+    this.#defaultLocale = defaultLocale;
+    this.#locale = document.documentElement.getAttribute('lang') || defaultLocale;
+  }
+
+  getLocale(): Locale | null {
+    return this.#locale;
+  }
+
+  onChange(listener: ChangeListener): Unsubscribe {
+    this.#listeners.add(listener);
+
+    if (this.#listeners.size > 0) {
+      this.#activate();
+    }
+
+    return () => {
+      this.#listeners.delete(listener);
+
+      if (this.#listeners.size === 0) {
+        this.#deactivate;
+      }
+    };
+  }
+
+  #updateLocaleInfo() {
+    this.#locale = this.#document.documentElement.getAttribute('lang') || this.#defaultLocale;
+  }
+
+  #activate() {
+    let mutationObserver: MutationObserver | null = null;
+    this.#updateLocaleInfo();
+    mutationObserver = new MutationObserver(() => this.#updateLocaleInfo());
+
+    mutationObserver.observe(document.getRootNode(), {
+      attributes: true,
+      attributeFilter: ['lang'],
+    });
+  }
+
+  #deactivate() {
+    if (!this.#mutationObserver) {
+      return;
+    }
+
+    this.#mutationObserver.disconnect();
+    this.#mutationObserver = null;
   }
 }
