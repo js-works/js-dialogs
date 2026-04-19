@@ -3,6 +3,7 @@ import { Button, CloseButton } from '@mantine/core';
 import { useModals } from '@mantine/modals';
 import { createElement as h, useState, type ReactNode } from 'react';
 import { type DialogAdapter } from '../main/core/types.js'
+import { DefaultIconsPlugin } from '../main/plugins/default-icons.js';
 
 export function useMantineDialogs() {
   const adapter = useMantineDialogAdapter();
@@ -10,6 +11,7 @@ export function useMantineDialogs() {
   const [dialogsController] = useState(() =>
     createDialogsController({
       adapter,
+      plugins: [new DefaultIconsPlugin()]
     })
   );
 
