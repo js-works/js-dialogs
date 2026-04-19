@@ -1,14 +1,15 @@
-export { createI18n, createTextCategory, getI18n, initI18n, LocalizeController };
+export { createI18n, createTextCategory, defineTexts, getI18n, initI18n, LocalizeController };
 
 export type {
   ChangeListener,
   Locale,
   LocalizeControllerHost,
   Namespace,
+  TextBundle,
   Translation,
   TranslationKey,
   TranslationMap,
-  TranslationBundle,
+  TranslationPack,
   Unsubscribe,
 };
 
@@ -21,6 +22,7 @@ type Unsubscribe = () => void;
 type ChangeListener = () => void;
 type Translation = string | (<T extends Record<string, unknown>>(param: T) => string);
 type TranslationMap = Record<string, Translation>;
+type TextBundle = Record<Locale, TranslationPack[]>;
 
 type TranslationParams<T> = T extends (params: Record<string, any>, localizer: Localizer) => string
   ? Parameters<T>[0]
@@ -35,7 +37,7 @@ type SimpleTranslationKey<K, T> = T extends (
     ? K
     : never;
 
-type TranslationBundle = {
+type TranslationPack = {
   namespace: string;
   translations: TranslationMap;
   partial: boolean;
@@ -43,8 +45,8 @@ type TranslationBundle = {
 
 type TextCategory<T extends TranslationMap> = {
   getNamespace(): string;
-  full(translations: T): TranslationBundle;
-  partial(translations: Partial<T>): TranslationBundle;
+  full(translations: T): TranslationPack;
+  partial(translations: Partial<T>): TranslationPack;
 };
 
 type I18n = {
@@ -62,7 +64,7 @@ type I18n = {
   ): string;
 
   getLocalizer(locale: Locale): Localizer;
-  addTexts(texts: Record<Locale, TranslationBundle[]>): void;
+  addTexts(texts: Record<Locale, TranslationPack[]>): void;
   getPrimaryLocale(): Locale;
   onPrimaryLocaleChange(listener: ChangeListener): Unsubscribe;
   getFallbackLocales(): Locale[];
@@ -161,6 +163,11 @@ function createTextCategory<T extends TranslationMap>(namespace: string): TextCa
   });
 }
 
+// For type safety and expressiveness.
+function defineTexts(texts: TextBundle): TextBundle {
+  return texts;
+}
+
 // === internal functions ============================================
 
 function createRecord() {
@@ -190,14 +197,33 @@ class I18nImpl implements I18n {
   #fallbackLocalesListners: ChangeListener[] = [];
   #dict: Record<Locale, Record<Namespace, Record<string, Translation>>> = createRecord();
   #localizerByLocale: Record<Locale, Localizer> = createRecord();
-  #translationsToAdd: Record<Locale, TranslationBundle[]>[] | null;
+  #translationsToAdd: Record<Locale, TranslationPack[]>[] | null;
 
   constructor(getConfig: () => I18nConfig, addTranslationsLazily = false) {
     this.#getConfig = getConfig;
     this.#translationsToAdd = addTranslationsLazily ? [] : null;
   }
 
-  addTexts(texts: Record<Locale, TranslationBundle[]>): void {
+  addTexts(...bundles: TextBundle[]): void {
+    if (bundles.length === 0) {
+      return;
+    }
+
+    if (bundles.length > 1) {
+      for (const bundle of bundles) {
+        this.addTexts(bundle);
+      }
+
+      return;
+    }
+
+    const texts = bundles[0];
+
+    if (this.#translationsToAdd) {
+      this.#translationsToAdd.push(texts);
+      return;
+    }
+
     for (const [locale, bundles] of Object.entries(texts)) {
       let byNamespace = this.#dict![locale];
 
