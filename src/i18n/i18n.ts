@@ -80,9 +80,12 @@ type I18nConfig = {
 
 type Localizer = {
   getText<T extends TranslationMap>(category: TextCategory<T>, key: keyof T): string | null;
-  numberFormat(option: Intl.NumberFormatOptions): Intl.NumberFormat;
-  dateTimeFormat(option: Intl.DateTimeFormatOptions): Intl.DateTimeFormat;
-  localizer(locale: Locale): Localizer;
+  formatNumber(value: number, option?: Intl.NumberFormatOptions): string;
+  numberFormat(option?: Intl.NumberFormatOptions): Intl.NumberFormat;
+  formatDateTime(value: Date, option?: Intl.DateTimeFormatOptions): string;
+  dateTimeFormat(option?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat;
+  getLocalizer(locale: Locale): Localizer;
+  getI18n(): I18n;
 };
 
 type LocalizeControllerHost = {
@@ -195,11 +198,6 @@ class I18nImpl implements I18n {
   }
 
   addTexts(texts: Record<Locale, TranslationBundle[]>): void {
-    if (this.#translationsToAdd) {
-      this.#translationsToAdd.push(texts);
-      return;
-    }
-
     for (const [locale, bundles] of Object.entries(texts)) {
       let byNamespace = this.#dict![locale];
 
@@ -213,6 +211,12 @@ class I18nImpl implements I18n {
 
         for (const [key, value] of Object.entries(bundle.translations)) {
           let translations = byNamespace[namespace];
+
+          if (!translations) {
+            translations = createRecord();
+            byNamespace[namespace] = translations;
+          }
+
           translations[key] = value;
           const config = this.#getConfig();
 
@@ -244,6 +248,7 @@ class I18nImpl implements I18n {
     params: Record<string, Translation> | null = null
   ) {
     this.#init();
+    console.log(this.#dict);
     return this.#getText(new Intl.Locale(locale), category.getNamespace(), key, params ?? null);
   }
 
@@ -316,12 +321,11 @@ class I18nImpl implements I18n {
     params: Record<string, Translation> | null
   ): string | null {
     let rec: Record<string, any> = this.#dict[locale]; // TODO
-
     if (!rec) {
       return null;
     }
 
-    rec = this.#dict[namespace];
+    rec = rec[namespace];
 
     if (!rec) {
       return null;
@@ -350,13 +354,14 @@ class I18nImpl implements I18n {
     }
 
     this.#config = this.#getConfig() ?? {};
+    console.log(this.#translationsToAdd?.length);
 
     if (this.#translationsToAdd) {
-      for (const translations of this.#translationsToAdd) {
+      const translationsToAdd = this.#translationsToAdd;
+      this.#translationsToAdd = null;
+      for (const translations of translationsToAdd) {
         this.addTexts(translations);
       }
-
-      this.#translationsToAdd = null;
     }
   }
 }
@@ -389,16 +394,28 @@ class LocalizerImpl implements Localizer {
     return this.#i18n.getText(this.#getLocale(), category, key as string, params || null);
   }
 
-  numberFormat(options: Intl.NumberFormatOptions): Intl.NumberFormat {
+  formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
+    return new Intl.NumberFormat(this.#getLocale(), options).format(value);
+  }
+
+  numberFormat(options?: Intl.NumberFormatOptions): Intl.NumberFormat {
     return new Intl.NumberFormat(this.#getLocale(), options);
   }
 
-  dateTimeFormat(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  formatDateTime(value: Date, options?: Intl.DateTimeFormatOptions): string {
+    return new Intl.DateTimeFormat(this.#getLocale(), options).format(value);
+  }
+
+  dateTimeFormat(options?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
     return new Intl.DateTimeFormat(this.#getLocale(), options);
   }
 
-  localizer(locale: Locale): Localizer {
+  getLocalizer(locale: Locale): Localizer {
     return this.#i18n.getLocalizer(locale);
+  }
+
+  getI18n(): I18n {
+    return this.#i18n;
   }
 }
 
