@@ -2,7 +2,7 @@ import { createDialogsController } from '../main/core/dialog-controller.js';
 import { Button, CloseButton } from '@mantine/core';
 import { useModals } from '@mantine/modals';
 import { createElement as h, useState, type ReactNode } from 'react';
-import { type DialogAdapter } from '../main/core/types.js'
+import { type DialogAdapter } from '../main/core/types.js';
 import { DefaultIconsPlugin } from '../main/plugins/default-icons.js';
 
 export function useMantineDialogs() {
@@ -11,7 +11,7 @@ export function useMantineDialogs() {
   const [dialogsController] = useState(() =>
     createDialogsController({
       adapter,
-      plugins: [new DefaultIconsPlugin()]
+      plugins: [new DefaultIconsPlugin()],
     })
   );
 
@@ -35,10 +35,15 @@ function createMantineDialogAdapter(
         slots.push(h('div', { slot: entry[0], key: `${entry[0]}-${idx}` }, entry[1]));
       });
 
-      const modalId = modals.openModal({
-        className: data.id,
-        withCloseButton: false,
-        children: h(
+      let setInnerContent: any;
+
+      function DialogContent() {
+        let content: any;
+        [content, setInnerContent] = useState(() =>
+          h(data.customDialogTagName, { useNativeDialog: false, ...data.properties }, slots)
+        );
+
+        return h(
           'div',
           null,
           h(
@@ -46,11 +51,27 @@ function createMantineDialogAdapter(
             null,
             `.${data.id} > .mantine-Modal-inner >  .mantine-Modal-content > .mantine-Modal-body { padding: 0; }`
           ),
-          h(data.customDialogTagName, { useNativeDialog: false, ...data.properties }, slots)
-        ),
+          content
+        );
+      }
+
+      const modalId = modals.openModal({
+        className: data.id,
+        withCloseButton: false,
+        children: h(DialogContent),
       });
 
       return {
+        updateDialog: (slotContents, properties) => {
+          const slots = [] as any;
+
+          slotContents.forEach((entry: any, idx: number) => {
+            slots.push(h('div', { slot: entry[0], key: `${entry[0]}-${idx}` }, entry[1]));
+          });
+
+          setContent(h(data.customDialogTagName, { useNativeDialog: false, ...properties }, slots));
+        },
+
         closeDialog: () =>
           new Promise((resolve) => {
             const dlg = document.querySelector(`.${data.id} > .mantine-Overlay-root`)!;

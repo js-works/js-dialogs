@@ -1,10 +1,17 @@
-import { toNode } from "./dom.js"
-import { h, html, toHtmlElement, HtmlContent } from "./html.js"
-import { css } from "./css.js"
-import { svg } from "./svg.js"
-import type { ActionButtonType, DialogAdapter, DialogControllerConfig, DialogType, Plugin, Renderable } from "./types.js"
+import { toNode } from './dom.js';
+import { h, html, toHtmlElement, HtmlContent } from './html.js';
+import { css } from './css.js';
+import { svg } from './svg.js';
+import type {
+  ActionButtonType,
+  DialogAdapter,
+  DialogControllerConfig,
+  DialogType,
+  Plugin,
+  Renderable,
+} from './types.js';
 
-import { dialogStyles } from "./dialog.styles.js";
+import { dialogStyles } from './dialog.styles.js';
 
 export { createDialogsController, css, h, html, svg, type DialogsController };
 
@@ -29,13 +36,21 @@ interface MessageDialogConfig<C> extends BaseDialogConfig<C> {}
 
 interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {}
 
-interface DialogsController<C> {
+interface DialogsFunctions<C> {
   info(config: MessageDialogConfig<C>): Promise<Result>;
   success(config: MessageDialogConfig<C>): Promise<Result>;
   warn(config: MessageDialogConfig<C>): Promise<Result>;
   error(config: MessageDialogConfig<C>): Promise<Result>;
   confirm(config: ConfirmDialogConfig<C>): Promise<Result>;
   approve(config: ConfirmDialogConfig<C>): Promise<Result>;
+}
+
+interface DialogsController<C> extends DialogsFunctions<C> {
+  flow(ctx: DialogsFlowContext<C>): Promise<void>;
+}
+
+interface DialogsFlowContext<C> extends DialogsFunctions<C> {
+  prepare(spinner: { text(message: string): void }): void;
 }
 
 interface Result<T = null> {
@@ -51,7 +66,6 @@ interface ButtonConfig {
   text: string;
 }
 
-
 // ===================================================================
 // Constants
 // ===================================================================
@@ -64,24 +78,22 @@ const symbolDecline = Symbol('decline');
 // DialogController
 // ===================================================================
 
-function createDialogsController(params?: {
-  plugins?: Plugin[]
-}): DialogsController<Node>;
-  
+function createDialogsController(params?: { plugins?: Plugin[] }): DialogsController<Node>;
+
 function createDialogsController<C>(params: {
-  adapter: DialogAdapter<C>
-  plugins?: Plugin[]
-}): DialogsController<C>
+  adapter: DialogAdapter<C>;
+  plugins?: Plugin[];
+}): DialogsController<C>;
 
 function createDialogsController(params?: any): DialogsController<any> {
   const adapter = params?.adapter || defaultDialogAdapter;
-    
+
   let mappedConfig: DialogControllerConfig = params?.config || {};
   const plugins = params?.plugins || [];
 
   for (const plugin of plugins) {
     if (plugin.mapDialogControllerConfig)
-    mappedConfig = {...mappedConfig, ...plugin.mapDialogControllerConfig(mappedConfig)};
+      mappedConfig = { ...mappedConfig, ...plugin.mapDialogControllerConfig(mappedConfig) };
   }
 
   return new DefaultDialogsController(mappedConfig, adapter);
@@ -224,9 +236,7 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     const slotContents: any = [];
     const internalSlotContents: any = [];
 
-    const icon = this.#config.getDialogIcon
-      ? this.#config.getDialogIcon(dialogType) || null
-      : null
+    const icon = this.#config.getDialogIcon ? this.#config.getDialogIcon(dialogType) || null : null;
 
     if (icon) {
       internalSlotContents.push(['dialog-icon', html.raw(icon.getSvgText())]);
@@ -339,6 +349,7 @@ const defaultDialogAdapter: DialogAdapter<HTMLElement> = {
     document.body.append(customDialogElem);
 
     return {
+      updateDialog: (slotContents, proeprties) => {}, // TODO!!!!!
       closeDialog: () => customDialogElem.close(),
     };
   },
@@ -467,7 +478,6 @@ class CustomDialogElement extends HTMLElement {
     return CustomDialogElement.#tagName;
   }
 }
-
 
 const closeIcon = svg`
     <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">

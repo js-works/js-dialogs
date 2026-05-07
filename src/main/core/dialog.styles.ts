@@ -1,6 +1,6 @@
-import { css } from "./css.js"
+import { css } from './css.js';
 
-export { dialogStyles }
+export { dialogStyles };
 
 const theme = {
   primaryTextColor: 'white',
@@ -30,7 +30,7 @@ const dialogStyles = css`
     border: none;
     border-radius: ${theme.dialogBorderRadius};
     outline: none;
-    min-width: 23em;
+    min-width: 25em;
     box-sizing: border-box;
     padding: 0;
     margin: 0 auto;
@@ -89,7 +89,8 @@ const dialogStyles = css`
   .dialog-content {
     user-select: none;
     font-size: 16px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family:
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
     .header {
       display: flex;
@@ -125,7 +126,7 @@ const dialogStyles = css`
       flex-direction: column;
       gap: 0.5em;
       padding: 0 1.25em 0.75em 1.25em;
-      min-height: 2em;
+      min-height: 3em;
       line-height: 1.25em;
 
       .intro,
