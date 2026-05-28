@@ -2,6 +2,7 @@ import { toNode } from './dom.js';
 import { h, html, toHtmlElement, HtmlContent } from './html.js';
 import { css } from './css.js';
 import { svg } from './svg.js';
+
 import type {
   ActionButtonType,
   DialogAdapter,
@@ -46,11 +47,12 @@ interface DialogsFunctions<C> {
 }
 
 interface DialogsController<C> extends DialogsFunctions<C> {
-  flow(ctx: DialogsFlowContext<C>): Promise<void>;
+  createScope(): DialogScope<C>;
 }
 
-interface DialogsFlowContext<C> extends DialogsFunctions<C> {
-  prepare(spinner: { text(message: string): void }): void;
+interface DialogScope<C> extends DialogsFunctions<C> {
+  prepare<T>(): T;
+  action<T>(): Promise<T>;
 }
 
 interface Result<T = null> {
@@ -164,6 +166,10 @@ class DefaultDialogsController<C> implements DialogsController<C> {
 
   async approve(config: ConfirmDialogConfig<C>): Promise<Result> {
     return this.#openDialog('approve', config, null, [this.#okBtnDanger, this.#cancelBtn]);
+  }
+
+  createScope(): DialogScope<C> {
+    return null as any; // TODO
   }
 
   async #openDialog(
