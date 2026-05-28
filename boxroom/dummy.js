@@ -228,3 +228,329 @@ const deleteFileUsecase = () => dialogs.run(dialog => { // AbortErrors will be i
     }
   }
 });
+
+
+
+
+
+async function editUser({ dialogs, userService, userId }) {
+  using scope = dialogs.createScope();
+
+  const confirmResult = await scope.confirm({
+    content: "Edit user profile?"
+  });
+
+  if (confirmResult.canceled) return;
+
+  const profile = await scope.query(() =>
+    userService.loadUserProfile(userId)
+  );
+
+  if (!profile.ok) {
+    await scope.error({ content: "Could not load user." });
+    return;
+  }
+
+  const form = await scope.form({
+    title: "Edit user",
+    initialValue: profile.value,
+
+    render: (state) => html`
+      <ui-text-field
+        name="username"
+        value=${state.values.username}
+        error=${state.fieldErrors.username}
+      />
+
+      <ui-password-field
+        name="password"
+        value=${state.values.password}
+        error=${state.fieldErrors.password}
+      />
+
+      ${state.errorMessage
+      ? html`<ui-alert>${state.errorMessage}</ui-alert>`
+      : ""
+    }
+    `
+  });
+
+  // no break, no continue
+  for await (const submission of form) {
+
+    if (submission.cancelled) {
+      return; // user exited interaction
+    }
+
+    const result = await scope.command(() =>
+      userService.saveUserProfile({
+        userId,
+        ...submission.value
+      })
+    );
+
+    // SUCCESS → terminal state
+    if (result.ok) {
+      await scope.success({
+        content: "User updated."
+      });
+
+      return;
+    }
+
+    // FAILURE → feed errors back into form, loop continues automatically
+    form.setErrors(mapErrors(result.error));
+  }
+}
+
+
+
+
+
+
+
+
+
+export type CancelReason =
+| "user"        // explicit cancel button (confirm/prompt only)
+| "escape"      // ESC key
+| "backdrop"    // clicked outside dialog
+| "timeout"     // time-based expiration
+| "abort";      // scope/route/unmount/lifecycle teardown
+
+
+// -----------------------------
+// Confirm (binary gate)
+// -----------------------------
+export type ConfirmResult =
+| {
+  canceled: false;
+}
+| {
+  canceled: true;
+  reason: CancelReason;
+};
+
+
+// -----------------------------
+// Choose (multi-action decision)
+// -----------------------------
+export type ChooseResult<TAction extends string> =
+| {
+  canceled: false;
+  action: TAction;
+}
+| {
+  canceled: true;
+  reason: CancelReason;
+};
+
+
+
+
+
+
+
+
+
+type InteractionResult<T> =
+| {
+  canceled: false;
+  value: T;
+}
+| {
+  canceled: true;
+  reason: CancelReason;
+};
+
+
+
+
+type ConfirmResult = InteractionResult<void>;
+
+type ChooseResult<TAction extends string> =
+  InteractionResult<TAction>;
+
+
+
+
+
+
+//////////////////////////////
+// Cancellation semantics
+//////////////////////////////
+
+export type CancelReason =
+| "user"        // explicit cancel button
+| "escape"      // ESC key
+| "backdrop"    // click outside
+| "timeout"     // time-based expiry
+//  no "aboort" !!!! | "abort";      // scope/route/unmount teardown
+
+
+//////////////////////////////
+// Core result primitive
+//////////////////////////////
+
+export type InteractionResult<T> =
+| {
+  canceled: false;
+  value: T;
+}
+| {
+  canceled: true;
+  reason: CancelReason;
+};
+
+
+//////////////////////////////
+// Confirm (binary gate, no payload)
+//////////////////////////////
+
+export type ConfirmResult =
+| {
+  canceled: false;
+}
+| {
+  canceled: true;
+  reason: CancelReason;
+};
+
+
+//////////////////////////////
+// Info (acknowledgement only)
+//////////////////////////////
+
+export type InfoResult = ConfirmResult;
+
+
+//////////////////////////////
+// Choose (multi-action decision)
+//////////////////////////////
+
+export type ChooseResult<TAction extends string> = InteractionResult<TAction>;
+
+
+//////////////////////////////
+// Prompt (single value input)
+//////////////////////////////
+
+export type PromptResult<T = string> = InteractionResult<T>;
+
+
+//////////////////////////////
+// Generic dialog (action + optional data)
+//////////////////////////////
+
+export type DialogResult<
+TAction extends string,
+  TData = void
+  > =
+| {
+  canceled: false;
+  action: TAction;
+  data: TData;
+}
+| {
+  canceled: true;
+  reason: CancelReason;
+};
+
+
+//////////////////////////////
+// Optional convenience alias
+//////////////////////////////
+
+export type YesNoCancelResult = ChooseResult<"yes" | "no">;
+
+
+
+
+
+//////////////////////////////
+// 1. Scope lifecycle (NOT part of dialog results)
+//////////////////////////////
+
+export type CancelReason =
+| "user"
+| "escape"
+| "backdrop"
+| "timeout";
+
+
+//////////////////////////////
+// 2. Core primitive (single-value interactions)
+//////////////////////////////
+
+export type InteractionResult<T> =
+| {
+  canceled: false;
+  value: T;
+}
+| {
+  canceled: true;
+  reason: CancelReason;
+};
+
+
+//////////////////////////////
+// 3. Confirm (no payload)
+//////////////////////////////
+
+export type ConfirmResult =
+| {
+  canceled: false;
+}
+| {
+  canceled: true;
+  reason: CancelReason;
+};
+
+
+//////////////////////////////
+// 4. Choose (action selection)
+//////////////////////////////
+
+export type ChooseResult<TAction extends string> =
+  InteractionResult<TAction>;
+
+
+//////////////////////////////
+// 5. Prompt (input value)
+//////////////////////////////
+
+export type PromptResult<T = string> =
+  InteractionResult<T>;
+
+
+//////////////////////////////
+// 6. Composite dialog (action + data)
+//////////////////////////////
+
+export type DialogResult<
+TAction extends string,
+  TData
+  > =
+| {
+  canceled: false;
+  action: TAction;
+  data: TData;
+}
+| {
+  canceled: true;
+  reason: CancelReason;
+};
+
+
+//////////////////////////////
+// 7. Info (side effect only)
+//////////////////////////////
+
+export type InfoResult = void;
+
+
+//////////////////////////////
+// 8. Convenience alias example
+//////////////////////////////
+
+export type YesNoResult = ChooseResult<"yes" | "no">;
