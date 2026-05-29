@@ -19,12 +19,24 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
     <button id="btn-approve" class="btn">Approve (vanilla)</button>
     <br />
     <button id="temp" class="btn">Click me</button>
+    <button id="temp2" class="btn">Click me</button>
   </div>
   <div id="column-2"></div>
 `.asString();
 
 document.querySelector<HTMLButtonElement>('#temp')!.onclick = async () => {
   await runWithOverlay(async () => await sleep(2000));
+  await dialogs.approve({
+    title: 'Approve deletion',
+    content: 'Are you really sure that the file should be deleted?',
+    buttonTexts: {
+      confirm: 'Delete File',
+    },
+  });
+};
+
+document.querySelector<HTMLButtonElement>('#temp2')!.onclick = async () => {
+  await runWithOverlay(async () => await sleep(1000));
   await dialogs.approve({
     title: 'Approve deletion',
     content: 'Are you really sure that the file should be deleted?',

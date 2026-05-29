@@ -37,7 +37,7 @@ export async function runWithOverlay<T = void>(supply: () => Promise<T>): Promis
           }
           
           &::backdrop {
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.75);
             backdrop-filter: blur(0.4px);
 
             transition:
