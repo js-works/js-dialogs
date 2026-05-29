@@ -7,6 +7,7 @@ import { dialogs } from './vanilla-dialogs.js';
 
 import './style.css';
 import '@mantine/core/styles.css';
+import { toHtmlElement } from '../main/core/html.js';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
   <div id="column-1">
@@ -16,9 +17,49 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
     <button id="btn-error" class="btn">Error (vanilla)</button>
     <button id="btn-confirm" class="btn">Confirm (vanilla)</button>
     <button id="btn-approve" class="btn">Approve (vanilla)</button>
+    <br/>
+    <button id="temp" class="btn">Click me</button>
   </div>
   <div id="column-2"></div>
 `.asString();
+
+document.querySelector<HTMLButtonElement>('#temp')!.onclick = async () => {
+  const container = document.createElement("div");
+  container.innerHTML = html`<dialog id="overlay"><div class="spinner"></div></dialog>`.asString()
+  const dialog: HTMLDialogElement = container.firstChild as any;
+
+  document.body.append(dialog);
+
+  dialog.showModal();
+
+  dialog.addEventListener("cancel", (ev) => {
+    ev.preventDefault()
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    console.log(1)
+  }); 
+
+
+  dialog.addEventListener("close", () => {
+    dialog.remove();
+  });
+
+  window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    const dialog = document.querySelector<HTMLDialogElement>("#overlay");
+    if (dialog?.open) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log(3)
+    }
+  }
+}, true);
+
+  setTimeout(() => {
+    dialog.close();
+  }, 6000);
+};
+
 
 document.querySelector<HTMLButtonElement>('#btn-info')!.onclick = async () => {
   const result = await dialogs.info({
