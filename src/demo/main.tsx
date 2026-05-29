@@ -26,7 +26,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
 document.querySelector<HTMLButtonElement>('#temp')!.onclick = async () => {
   await runWithOverlay(async () => await sleep(2000));
   await dialogs.approve({
+    title: 'Approve deletion',
     content: 'Are you really sure that the file should be deleted?',
+    buttonTexts: {
+      confirm: 'Delete File',
+    },
   });
 };
 

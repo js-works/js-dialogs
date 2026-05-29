@@ -1,5 +1,6 @@
 import { SvgContent } from './svg';
 import { CssContent } from './css';
+import type { Toggle } from './toggles';
 
 export type {
   ActionButtonType,
@@ -35,7 +36,12 @@ interface DialogAdapter<C> {
 
   renderCloseButton?(text: string, onClick: () => void): Renderable<C>;
 
-  renderActionButton?(type: ActionButtonType, text: string, onClick: () => void): Renderable<C>;
+  renderActionButton?(
+    type: ActionButtonType,
+    text: string,
+    loadingToggle: Toggle,
+    onClick: () => void
+  ): Renderable<C>;
 
   getStyles?(tagName: string): CssContent;
 }

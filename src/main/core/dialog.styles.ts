@@ -166,11 +166,33 @@ const dialogStyles = css`
   }
 
   .action-button {
+    position: relative;
     outline: none;
     border: none;
     border-radius: ${theme.actionButtonBorderRadius};
     padding: 0.6em 1.75em;
     cursor: pointer;
+
+    &.loading {
+      .spinner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(0deg);
+        width: 1.5em;
+        height: 1.5em;
+        border: 3px solid color-mix(in srgb, currentColor 20%, transparent);
+        border-top: 3px solid currentColor;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+
+      .button-text {
+        visibility: hidden;
+      }
+    }
 
     &[data-type='primary'] {
       color: ${theme.primaryTextColor};
@@ -278,6 +300,15 @@ const dialogStyles = css`
     }
     to {
       opacity: 0;
+    }
+  }
+
+  @keyframes spin {
+    from {
+      transform: translate(-50%, -50%) rotate(0deg);
+    }
+    to {
+      transform: translate(-50%, -50%) rotate(360deg);
     }
   }
 `.asStyleSheet();

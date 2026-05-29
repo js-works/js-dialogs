@@ -5,7 +5,7 @@ export async function runWithOverlay<T = void>(supply: () => Promise<T>): Promis
   const spinnerId = dialogId + '--spinner';
   const closingDataAttributeName = `data-closing` + dialogId;
   const container = document.createElement('div');
-  const transitionDuration = '400ms';
+  const transitionDuration = '750ms';
   const transitionDelay = '400ms';
 
   container.innerHTML = `
@@ -61,7 +61,6 @@ export async function runWithOverlay<T = void>(supply: () => Promise<T>): Promis
         @starting-style {
             #${dialogId} {
                 opacity: 0;
-                border: 10px solid red;
             }
 
             #${dialogId}[open]::backdrop {
@@ -70,6 +69,11 @@ export async function runWithOverlay<T = void>(supply: () => Promise<T>): Promis
             }
         }
 
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
       </style>
       <div id="${spinnerId}"></div>
     </dialog>
@@ -91,7 +95,7 @@ export async function runWithOverlay<T = void>(supply: () => Promise<T>): Promis
     dialog.setAttribute(closingDataAttributeName, '');
 
     await new Promise((resolve) => {
-      dialog.addEventListener('transitionend', () => resolve(null));
+      dialog.addEventListener('transitionend', () => resolve(null), { once: true });
     });
 
     dialog.remove();

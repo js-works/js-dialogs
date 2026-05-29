@@ -1,9 +1,10 @@
 import { createDialogsController } from '../main/core/dialog-controller.js';
 import { Button, CloseButton } from '@mantine/core';
 import { useModals } from '@mantine/modals';
-import { createElement as h, useState, type ReactNode } from 'react';
-import { type DialogAdapter } from '../main/core/types.js';
+import { createElement as h, useEffect, useState, type ReactNode } from 'react';
+import { type ActionButtonType, type DialogAdapter } from '../main/core/types.js';
 import { DefaultIconsPlugin } from '../main/plugins/default-icons.js';
+import type { Toggle } from '../main/core/toggles.js';
 
 export function useMantineDialogs() {
   const adapter = useMantineDialogAdapter();
@@ -91,20 +92,40 @@ function createMantineDialogAdapter(
       return h(CloseButton as any, { title: text, onClick });
     },
 
-    renderActionButton(appearance: any, text: any, onClick: any) {
-      const variant = appearance === 'primary' || appearance === 'danger' ? 'filled' : 'default';
-
-      const color = appearance === 'danger' ? 'red.9' : undefined;
-
-      return h(
-        Button as any,
-        {
-          variant,
-          color,
-          onClick,
-        },
-        text
-      );
+    renderActionButton(appearance, text, loadingToggle, onClick) {
+      return h(DialogButton, { appearance, text, loadingToggle, onClick });
     },
   };
+}
+
+function DialogButton(props: {
+  appearance: ActionButtonType;
+  text: string;
+  loadingToggle: Toggle;
+  onClick: () => void;
+}) {
+  const [loading, setLoading] = useState(() => props.loadingToggle.value);
+
+  useEffect(() => {
+    return props.loadingToggle.onChange(setLoading);
+  }, [props.loadingToggle]);
+
+  useEffect(() => {
+    console.log('update');
+  });
+
+  const variant =
+    props.appearance === 'primary' || props.appearance === 'danger' ? 'filled' : 'default';
+  const color = props.appearance === 'danger' ? 'red.9' : undefined;
+
+  return h(
+    Button as any,
+    {
+      variant,
+      color,
+      loading,
+      onClick: props.onClick,
+    },
+    props.text
+  );
 }

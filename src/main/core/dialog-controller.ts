@@ -13,6 +13,7 @@ import type {
 } from './types.js';
 
 import { dialogStyles } from './dialog.styles.js';
+import { createToggle, type Toggle } from './toggles.js';
 
 export { createDialogsController, css, h, html, svg, type DialogsController };
 
@@ -263,9 +264,17 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     }
 
     for (const buttonConfig of buttons) {
+      const [loadingToggle, setLoadingValue] = createToggle(); // TODO ro
+
+      setInterval(() => {
+        setLoadingValue(!loadingToggle.value);
+      }, 2000);
+
       const actionButton = (
         this.#adapter.renderActionButton || this.#renderDefaultActionButton.bind(this)
-      )(buttonConfig.type, buttonConfig.text, () => onButtonClicked(buttonConfig.id));
+      )(buttonConfig.type, buttonConfig.text, loadingToggle, () =>
+        onButtonClicked(buttonConfig.id)
+      );
 
       if (this.#adapter.renderActionButton) {
         slotContents.push(['action-button', actionButton]);
@@ -314,16 +323,32 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     return closeButton;
   }
 
-  #renderDefaultActionButton(type: ActionButtonType, text: string, onClick: () => {}) {
-    return h(
+  #renderDefaultActionButton(
+    type: ActionButtonType,
+    text: string,
+    loadingToggle: Toggle,
+    onClick: () => {}
+  ) {
+    const buttomElem = h(
       'button',
       {
-        className: 'action-button',
+        className: 'action-button' + (loadingToggle.value ? ' loading' : ''),
         'data-type': type,
         onclick: onClick,
       },
-      text
+      h('span', { className: 'spinner' }),
+      h('span', { className: 'button-text' }, text)
     );
+
+    loadingToggle.onChange((value) => {
+      if (value) {
+        buttomElem.classList.add('loading');
+      } else {
+        buttomElem.classList.remove('loading');
+      }
+    });
+
+    return buttomElem;
   }
 }
 
