@@ -1,28 +1,38 @@
 #overlay {
+  position: fixed;
   display: grid;
-  grid-template-rows: 4fr auto 6fr;
+  width: 100vw;
   height: 100vh;
+  grid-template-rows: 4fr auto 6fr;
   background-color: transparent; 
   border: none;
   outline: none;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 750ms ease 250ms;
+  
+  &[open] {
+    opacity: 1;
+  }
 }
 
-
-
 #overlay {
-  height: 100vh;
-
   &::backdrop {
     background-color: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(1px);
+    backdrop-filter: blur(0.4px);
 
     transition:
-      background-color 500ms ease 250ms,
-      backdrop-filter 500ms ease 250ms;
+      background-color 750ms ease 250ms,
+      backdrop-filter 750ms ease 250ms;
   }
 }
 
 @starting-style {
+  #overlay {
+    opacity: 0;
+    border: 10px solid red;
+  }
+
   #overlay[open]::backdrop {
     background-color: rgba(0, 0, 0, 0);
     backdrop-filter: blur(0);
