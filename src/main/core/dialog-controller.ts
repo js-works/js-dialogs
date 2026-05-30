@@ -14,6 +14,8 @@ import type {
 
 import { dialogStyles } from './dialog.styles.js';
 import { createToggle, type Toggle } from './toggles.js';
+import { isResultObject, type Result } from './result.js';
+import { runWithOverlay } from './overlay.js';
 
 export { createDialogsController, css, h, html, svg, type DialogsController };
 
@@ -39,12 +41,12 @@ interface MessageDialogConfig<C> extends BaseDialogConfig<C> {}
 interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {}
 
 interface DialogsFunctions<C> {
-  info(config: MessageDialogConfig<C>): Promise<Result>;
-  success(config: MessageDialogConfig<C>): Promise<Result>;
-  warn(config: MessageDialogConfig<C>): Promise<Result>;
-  error(config: MessageDialogConfig<C>): Promise<Result>;
-  confirm(config: ConfirmDialogConfig<C>): Promise<Result>;
-  approve(config: ConfirmDialogConfig<C>): Promise<Result>;
+  info(config: MessageDialogConfig<C>): Promise<DialogResult>;
+  success(config: MessageDialogConfig<C>): Promise<DialogResult>;
+  warn(config: MessageDialogConfig<C>): Promise<DialogResult>;
+  error(config: MessageDialogConfig<C>): Promise<DialogResult>;
+  confirm(config: ConfirmDialogConfig<C>): Promise<DialogResult>;
+  approve(config: ConfirmDialogConfig<C>): Promise<DialogResult>;
 }
 
 interface DialogsController<C> extends DialogsFunctions<C> {
@@ -52,11 +54,11 @@ interface DialogsController<C> extends DialogsFunctions<C> {
 }
 
 interface DialogScope<C> extends DialogsFunctions<C> {
-  prepare<T>(): T;
-  action<T>(): Promise<T>;
+  query<T>(supply: () => Promise<T | Result<T>>): Promise<Result<T>>;
+  command<T>(action: () => Promise<T | Result<T>>): Promise<Result<T>>;
 }
 
-interface Result<T = null> {
+interface DialogResult<T = null> {
   readonly confirmed: boolean;
   readonly denied: boolean;
   readonly declined: boolean;
@@ -145,32 +147,47 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     }
   }
 
-  async info(config: MessageDialogConfig<C>): Promise<Result> {
+  async info(config: MessageDialogConfig<C>): Promise<DialogResult> {
     return this.#openDialog('info', config, null, [this.#confirmBtn]);
   }
 
-  async success(config: MessageDialogConfig<C>): Promise<Result> {
+  async success(config: MessageDialogConfig<C>): Promise<DialogResult> {
     return this.#openDialog('success', config, null, [this.#confirmBtn]);
   }
 
-  async warn(config: MessageDialogConfig<C>): Promise<Result> {
+  async warn(config: MessageDialogConfig<C>): Promise<DialogResult> {
     return this.#openDialog('warn', config, null, [this.#okBtnDanger]);
   }
 
-  async error(config: MessageDialogConfig<C>): Promise<Result> {
+  async error(config: MessageDialogConfig<C>): Promise<DialogResult> {
     return this.#openDialog('error', config, null, [this.#okBtnDanger]);
   }
 
-  async confirm(config: ConfirmDialogConfig<C>): Promise<Result> {
+  async confirm(config: ConfirmDialogConfig<C>): Promise<DialogResult> {
     return this.#openDialog('confirm', config, null, [this.#confirmBtn, this.#cancelBtn]);
   }
 
-  async approve(config: ConfirmDialogConfig<C>): Promise<Result> {
+  async approve(config: ConfirmDialogConfig<C>): Promise<DialogResult> {
     return this.#openDialog('approve', config, null, [this.#okBtnDanger, this.#cancelBtn]);
   }
 
   createScope(): DialogScope<C> {
-    return null as any; // TODO
+    const scope: DialogScope<C> = {} as unknown as any;
+
+    scope.query = async (action) => {
+      try {
+        const result = await runWithOverlay(action);
+        return isResultObject(result) ? result : { ok: true, value: result };
+      } catch (e) {
+        return { ok: false, error: e };
+      }
+    };
+
+    return Object.assign(scope, {
+      confirm: this.confirm.bind(this),
+      info: this.info.bind(this),
+      error: this.error.bind(this),
+    });
   }
 
   async #openDialog(
@@ -231,6 +248,9 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     };
 
     const onButtonClicked = async (id: Symbol) => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 3000);
+      });
       await closeDialog();
       finish(id);
     };
@@ -266,15 +286,12 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     for (const buttonConfig of buttons) {
       const [loadingToggle, setLoadingValue] = createToggle(); // TODO ro
 
-      setInterval(() => {
-        setLoadingValue(!loadingToggle.value);
-      }, 2000);
-
       const actionButton = (
         this.#adapter.renderActionButton || this.#renderDefaultActionButton.bind(this)
-      )(buttonConfig.type, buttonConfig.text, loadingToggle, () =>
-        onButtonClicked(buttonConfig.id)
-      );
+      )(buttonConfig.type, buttonConfig.text, loadingToggle, async () => {
+        setTimeout(() => setLoadingValue(true), 300);
+        onButtonClicked(buttonConfig.id);
+      });
 
       if (this.#adapter.renderActionButton) {
         slotContents.push(['action-button', actionButton]);

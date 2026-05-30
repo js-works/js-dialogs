@@ -36,14 +36,34 @@ document.querySelector<HTMLButtonElement>('#temp')!.onclick = async () => {
 };
 
 document.querySelector<HTMLButtonElement>('#temp2')!.onclick = async () => {
-  await runWithOverlay(async () => await sleep(1000));
-  await dialogs.approve({
+  const scope = dialogs.createScope();
+  
+  const confirmResult = await scope.confirm({
     title: 'Approve deletion',
     content: 'Are you really sure that the file should be deleted?',
     buttonTexts: {
       confirm: 'Delete File',
-    },
+    }
   });
+
+  if (!confirmResult.confirmed) {
+    return
+  }
+
+  const deletionResult = await scope.command(async () => {
+    // Faking file deletion.
+    await sleep(2000);
+  })
+
+  if (deletionResult.ok) {
+    await scope.info({
+      content: "File deleted successfully"
+    })
+  } else {
+    await scope.error({
+      content: "File could not be deleted"
+    })
+  }
 };
 
 document.querySelector<HTMLButtonElement>('#btn-info')!.onclick = async () => {

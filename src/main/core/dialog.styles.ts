@@ -72,14 +72,14 @@ const dialogStyles = css`
   :host([data-dialog-type='confirm']) #icon,
   :host([data-dialog-type='prompt']) #icon {
     color: ${theme.primaryBackgroundColor};
-    background-color: color-mix(in srgb, ${theme.primaryBackgroundColor}, white 92%);
+    background-color: color-mix(in srgb, ${theme.primaryBackgroundColor}, white 90%);
   }
 
   :host([data-dialog-type='warn']) #icon,
   :host([data-dialog-type='error']) #icon,
   :host([data-dialog-type='approve']) #icon {
     color: ${theme.dangerBackgroundColor};
-    background-color: color-mix(in srgb, ${theme.dangerBackgroundColor}, white 92%);
+    background-color: color-mix(in srgb, ${theme.dangerBackgroundColor}, white 90%);
   }
 
   #icon:is(:has(slot:empty)) {
