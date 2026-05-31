@@ -554,3 +554,217 @@ export type InfoResult = void;
 //////////////////////////////
 
 export type YesNoResult = ChooseResult<"yes" | "no">;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+type State =
+  | { kind: "BUSY" }
+  | { kind: "DIALOG_IDLE"; dialog: DialogController }
+  | { kind: "DIALOG_BUSY"; dialog: DialogController };
+
+type ConfirmOptions = {
+  title: string;
+  content: string;
+};
+
+interface DialogController {
+  open(): void;
+  close(): void;
+  setBusy(busy: boolean): void;
+  onConfirm(cb: () => void): void;
+  onCancel(cb: () => void): void;
+}
+
+interface DialogRuntime {
+  showSpinner(): void;
+  hideSpinner(): void;
+  createDialog(opts: ConfirmOptions): DialogController;
+}
+
+/**
+ * Single-dialog serialized execution scope
+ */
+class DialogScope {
+  private state: State = { kind: "BUSY" };
+
+  private queue: Promise<void> = Promise.resolve();
+
+  constructor(private runtime: DialogRuntime) {}
+
+  // ----------------------------
+  // Public API
+  // ----------------------------
+
+  run<T>(fn: () => Promise<T>): Promise<T> {
+    return this.enqueue(fn);
+  }
+
+  confirm(opts: ConfirmOptions): Promise<boolean> {
+    return this.enqueue(() => this._confirm(opts));
+  }
+
+  // ----------------------------
+  // Core serialization
+  // ----------------------------
+
+  private enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    const next = this.queue.then(fn);
+    this.queue = next.then(
+      () => undefined,
+      () => undefined
+    );
+    return next;
+  }
+
+  // ----------------------------
+  // Confirm implementation
+  // ----------------------------
+
+  private async _confirm(opts: ConfirmOptions): Promise<boolean> {
+    this.setState({ kind: "BUSY" });
+
+    const dialog = this.runtime.createDialog(opts);
+
+    this.setState({ kind: "DIALOG_IDLE", dialog });
+
+    return new Promise<boolean>((resolve) => {
+      dialog.onCancel(() => {
+        dialog.close();
+        this.setState({ kind: "BUSY" });
+        resolve(false);
+      });
+
+      dialog.onConfirm(async () => {
+        this.setState({ kind: "DIALOG_BUSY", dialog });
+
+        // here is where async “commit work” would run if needed
+        // (kept minimal: just simulate lifecycle)
+
+        try {
+          resolve(true);
+        } finally {
+          dialog.close();
+          this.setState({ kind: "BUSY" });
+        }
+      });
+
+      dialog.open();
+    });
+  }
+
+  // ----------------------------
+  // State machine transitions
+  // ----------------------------
+
+  private setState(next: State) {
+    this.state = next;
+
+    switch (next.kind) {
+      case "BUSY":
+        this.runtime.showSpinner();
+        break;
+
+      case "DIALOG_IDLE":
+        this.runtime.hideSpinner();
+        next.dialog.setBusy(false);
+        break;
+
+      case "DIALOG_BUSY":
+        this.runtime.hideSpinner();
+        next.dialog.setBusy(true);
+        break;
+    }
+  }
+}
+
+// ----------------------------
+// Public entry (using-style helper)
+// ----------------------------
+
+export async function usingScope<T>(
+  runtime: DialogRuntime,
+  fn: (scope: DialogScope) => Promise<T>
+): Promise<T> {
+  const scope = new DialogScope(runtime);
+
+  try {
+    return await fn(scope);
+  } finally {
+    // hard cleanup guarantee
+    scope["setState"]?.({ kind: "BUSY" } as any);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+type DialogResult<T> = {
+  canceled: boolean;
+  value?: T;
+  meta: {
+    closedBy: 'confirm' | 'escape' | 'backdrop' | 'programmatic' | 'timeout';
+    openedAt: number;
+    closedAt: number;
+    cancelReason?: string;
+  };
+};

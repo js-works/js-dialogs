@@ -15,7 +15,7 @@ import type {
 import { dialogStyles } from './dialog.styles.js';
 import { createToggle, type Toggle } from './toggles.js';
 import { isResultObject, type Result } from './result.js';
-import { runWithOverlay } from './overlay.js';
+import { runWithOverlay, showOverlay } from './overlay.js';
 
 export { createDialogsController, css, h, html, svg, type DialogsController };
 
@@ -50,13 +50,10 @@ interface DialogsFunctions<C> {
 }
 
 interface DialogsController<C> extends DialogsFunctions<C> {
-  createScope(): DialogScope<C>;
+  exec<T>(action: (scope: DialogScope<C>) => Promise<T>): Promise<T>;
 }
 
-interface DialogScope<C> extends DialogsFunctions<C> {
-  query<T>(supply: () => Promise<T | Result<T>>): Promise<Result<T>>;
-  command<T>(action: () => Promise<T | Result<T>>): Promise<Result<T>>;
-}
+interface DialogScope<C> extends DialogsFunctions<C> {}
 
 interface DialogResult<T = null> {
   readonly confirmed: boolean;
@@ -107,25 +104,6 @@ function createDialogsController(params?: any): DialogsController<any> {
 class DefaultDialogsController<C> implements DialogsController<C> {
   readonly #config: DialogControllerConfig;
   readonly #adapter: DialogAdapter<C>;
-  #initialized = false;
-
-  readonly #confirmBtn: ButtonConfig = {
-    id: symbolConfirm,
-    type: 'primary',
-    text: 'Ok',
-  };
-
-  readonly #okBtnDanger: ButtonConfig = {
-    id: symbolConfirm,
-    type: 'danger',
-    text: 'Ok',
-  };
-
-  readonly #cancelBtn: ButtonConfig = {
-    id: symbolCancel,
-    type: 'secondary',
-    text: 'Cancel',
-  };
 
   constructor(config: DialogControllerConfig, adapter?: DialogAdapter<C>) {
     this.#config = config;
@@ -147,47 +125,143 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     }
   }
 
+  async exec<T>(action: (scope: DialogScope<C>) => Promise<T>): Promise<T> {
+    const closeOverlay = showOverlay();
+    const abortController = new AbortController();
+    const scope = new DefaultDialogScope(
+      () => closeOverlay(true),
+      abortController.signal,
+      this.#config,
+      this.#adapter
+    );
+
+    try {
+      return await action(scope);
+    } finally {
+      abortController.abort();
+    }
+  }
+
+  info(config: MessageDialogConfig<C>): Promise<DialogResult> {
+    const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
+    return scope.info(config);
+  }
+
+  success(config: MessageDialogConfig<C>): Promise<DialogResult> {
+    const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
+    return scope.success(config);
+  }
+
+  warn(config: MessageDialogConfig<C>): Promise<DialogResult> {
+    const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
+    return scope.warn(config);
+  }
+
+  error(config: MessageDialogConfig<C>): Promise<DialogResult> {
+    const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
+    return scope.error(config);
+  }
+
+  confirm(config: ConfirmDialogConfig<C>): Promise<DialogResult> {
+    const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
+    return scope.confirm(config);
+  }
+
+  approve(config: ConfirmDialogConfig<C>): Promise<DialogResult> {
+    const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
+    return scope.approve(config);
+  }
+}
+
+class DefaultDialogScope<C> implements DialogScope<C> {
+  readonly #config: DialogControllerConfig;
+  readonly #adapter: DialogAdapter<C>;
+  #initialized = false;
+  #closePrevious: (() => Promise<void>) | null = null;
+  #autoCloseDialogs: boolean;
+
+  #timeout: any = null;
+
+  readonly #confirmBtn: ButtonConfig = {
+    id: symbolConfirm,
+    type: 'primary',
+    text: 'Ok',
+  };
+
+  readonly #okBtnDanger: ButtonConfig = {
+    id: symbolConfirm,
+    type: 'danger',
+    text: 'Ok',
+  };
+
+  readonly #cancelBtn: ButtonConfig = {
+    id: symbolCancel,
+    type: 'secondary',
+    text: 'Cancel',
+  };
+
+  constructor(
+    closeOverlay: (() => Promise<void>) | null,
+    abortSignal: AbortSignal | null,
+    config: DialogControllerConfig,
+    adapter: DialogAdapter<C>
+  ) {
+    this.#autoCloseDialogs = !closeOverlay;
+    this.#config = config;
+    this.#adapter = adapter;
+    this.#closePrevious = closeOverlay;
+
+    abortSignal?.addEventListener('abort', async () => {
+      if (this.#closePrevious) {
+        try {
+          await this.#closePrevious();
+        } finally {
+          this.#closePrevious = null;
+        }
+      }
+    });
+  }
+
   async info(config: MessageDialogConfig<C>): Promise<DialogResult> {
+    if (this.#closePrevious) {
+      await this.#closePrevious();
+    }
     return this.#openDialog('info', config, null, [this.#confirmBtn]);
   }
 
+  async #prepare() {
+    if (this.#closePrevious) {
+      try {
+        await this.#closePrevious();
+      } finally {
+        this.#closePrevious = null;
+      }
+    }
+  }
+
   async success(config: MessageDialogConfig<C>): Promise<DialogResult> {
+    await this.#prepare();
     return this.#openDialog('success', config, null, [this.#confirmBtn]);
   }
 
   async warn(config: MessageDialogConfig<C>): Promise<DialogResult> {
+    await this.#prepare();
     return this.#openDialog('warn', config, null, [this.#okBtnDanger]);
   }
 
   async error(config: MessageDialogConfig<C>): Promise<DialogResult> {
+    await this.#prepare();
     return this.#openDialog('error', config, null, [this.#okBtnDanger]);
   }
 
   async confirm(config: ConfirmDialogConfig<C>): Promise<DialogResult> {
+    await this.#prepare();
     return this.#openDialog('confirm', config, null, [this.#confirmBtn, this.#cancelBtn]);
   }
 
   async approve(config: ConfirmDialogConfig<C>): Promise<DialogResult> {
+    await this.#prepare();
     return this.#openDialog('approve', config, null, [this.#okBtnDanger, this.#cancelBtn]);
-  }
-
-  createScope(): DialogScope<C> {
-    const scope: DialogScope<C> = {} as unknown as any;
-
-    scope.query = async (action) => {
-      try {
-        const result = await runWithOverlay(action);
-        return isResultObject(result) ? result : { ok: true, value: result };
-      } catch (e) {
-        return { ok: false, error: e };
-      }
-    };
-
-    return Object.assign(scope, {
-      confirm: this.confirm.bind(this),
-      info: this.info.bind(this),
-      error: this.error.bind(this),
-    });
   }
 
   async #openDialog(
@@ -248,10 +322,12 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     };
 
     const onButtonClicked = async (id: Symbol) => {
-      await new Promise((resolve) => {
-        setTimeout(resolve, 3000);
-      });
-      await closeDialog();
+      if (this.#autoCloseDialogs) {
+        await closeDialog();
+      } else {
+        this.#closePrevious = closeDialog;
+      }
+
       finish(id);
     };
 
