@@ -127,6 +127,7 @@ class DefaultDialogsController<C> implements DialogsController<C> {
 
   async exec<T>(action: (scope: DialogScope<C>) => Promise<T>): Promise<T> {
     const closeOverlay = showOverlay();
+
     const abortController = new AbortController();
     const scope = new DefaultDialogScope(
       () => closeOverlay(true),
@@ -365,7 +366,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
       const actionButton = (
         this.#adapter.renderActionButton || this.#renderDefaultActionButton.bind(this)
       )(buttonConfig.type, buttonConfig.text, loadingToggle, async () => {
-        setTimeout(() => setLoadingValue(true), 300);
+        setTimeout(() => setLoadingValue(true), 150);
         onButtonClicked(buttonConfig.id);
       });
 

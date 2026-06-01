@@ -37,9 +37,9 @@ document.querySelector<HTMLButtonElement>('#temp')!.onclick = async () => {
 
 document.querySelector<HTMLButtonElement>('#temp2')!.onclick = async () => {
   dialogs.exec(async (scope) => {
-    await sleep(4000)
+    await sleep(1500)
 
-    const confirmResult = await scope.confirm({
+    const confirmResult = await scope.approve({
       title: 'Approve deletion',
       content: 'Are you really sure that the file should be deleted?',
       buttonTexts: {
@@ -48,7 +48,7 @@ document.querySelector<HTMLButtonElement>('#temp2')!.onclick = async () => {
     });
 
     if (!confirmResult.confirmed) {
-      return;
+      //return;
     }
 
     await sleep(3000);
