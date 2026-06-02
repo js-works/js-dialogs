@@ -38,8 +38,13 @@ interface BaseDialogConfig<C> {
 
 interface MessageDialogConfig<C> extends BaseDialogConfig<C> {}
 
-interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {}
-interface InputDialogConfig<C> extends BaseDialogConfig<C> {}
+interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {
+  critical?: boolean;
+}
+
+interface InputDialogConfig<C> extends BaseDialogConfig<C> {
+  critical?: boolean;
+}
 
 interface DialogsFunctions<C> {
   info(config: MessageDialogConfig<C>): Promise<InfoDialogResult>;
@@ -47,12 +52,11 @@ interface DialogsFunctions<C> {
   warn(config: MessageDialogConfig<C>): Promise<WarnDialogResult>;
   error(config: MessageDialogConfig<C>): Promise<ErrorDialogResult>;
   confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult>;
-  confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmCriticalDialogResult>;
   input(config: InputDialogConfig<C>): Promise<InputDialogResult>;
 }
 
 interface DialogsController<C> extends DialogsFunctions<C> {
-  exec<T>(action: (scope: DialogScope<C>) => Promise<T>): Promise<T>;
+  flow<T>(action: (scope: DialogScope<C>) => Promise<T>): Promise<T>;
 }
 
 interface DialogScope<C> extends DialogsFunctions<C> {}
@@ -73,7 +77,6 @@ type SuccessDialogResult = DialogResult<'ok', void>;
 type WarnDialogResult = DialogResult<'ok', void>;
 type ErrorDialogResult = DialogResult<'ok', void>;
 type ConfirmDialogResult = DialogResult<'confirm', boolean>;
-type ConfirmCriticalDialogResult = DialogResult<'confirm', boolean>;
 type InputDialogResult = DialogResult<'confirm', FormData>;
 
 interface ButtonConfig {
@@ -139,7 +142,7 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     }
   }
 
-  async exec<T>(action: (scope: DialogScope<C>) => Promise<T>): Promise<T> {
+  async flow<T>(action: (scope: DialogScope<C>) => Promise<T>): Promise<T> {
     const closeOverlay = showOverlay();
 
     const abortController = new AbortController();
@@ -180,11 +183,6 @@ class DefaultDialogsController<C> implements DialogsController<C> {
   confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
     const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
     return scope.confirm(config);
-  }
-
-  confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmCriticalDialogResult> {
-    const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
-    return scope.confirmCritical(config);
   }
 
   input(config: InputDialogConfig<C>): Promise<InputDialogResult> {
@@ -261,39 +259,41 @@ class DefaultDialogScope<C> implements DialogScope<C> {
 
   async success(config: MessageDialogConfig<C>): Promise<SuccessDialogResult> {
     await this.#prepare();
-    return this.#openDialog('success', config, null, [this.#confirmBtn]);
+    return this.#openDialog('success', 'success', config, null, [this.#confirmBtn]);
   }
 
   async warn(config: MessageDialogConfig<C>): Promise<WarnDialogResult> {
     await this.#prepare();
-    return this.#openDialog('warn', config, null, [this.#confirmBtnDanger]);
+    return this.#openDialog('warn', 'warn', config, null, [this.#confirmBtnDanger]);
   }
 
   async error(config: MessageDialogConfig<C>): Promise<ErrorDialogResult> {
     await this.#prepare();
-    return this.#openDialog('error', config, null, [this.#confirmBtnDanger]);
+    return this.#openDialog('error', 'error', config, null, [this.#confirmBtnDanger]);
   }
 
   async confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
     await this.#prepare();
-    return this.#openDialog('confirm', config, null, [this.#confirmBtn, this.#cancelBtn]);
-  }
-
-  async confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmCriticalDialogResult> {
-    await this.#prepare();
-    return this.#openDialog('confirmCritical', config, null, [
-      this.#confirmBtnDanger,
-      this.#cancelBtn,
-    ]);
+    return this.#openDialog(
+      'confirm',
+      config.critical ? 'confirm:critical' : 'confirm',
+      config,
+      null,
+      [config.critical ? this.#confirmBtnDanger : this.#confirmBtn, this.#cancelBtn]
+    );
   }
 
   async input(config: InputDialogConfig<C>): Promise<InputDialogResult> {
     await this.#prepare();
-    return this.#openDialog('input', config, null, [this.#confirmBtnDanger, this.#cancelBtn]);
+    return this.#openDialog('input', config.critical ? 'input:critical' : 'input', config, null, [
+      config.critical ? this.#confirmBtnDanger : this.#confirmBtn,
+      this.#cancelBtn,
+    ]);
   }
 
   async #openDialog(
     dialogType: DialogType,
+    dialogVariant: string,
     baseConfig: BaseDialogConfig<C>,
     extraContent: Record<string, unknown> | null,
     buttons: ButtonConfig[]
@@ -414,7 +414,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     const { closeDialog } = this.#adapter.openDialog!({
       id: 'dlg-' + Date.now(),
       customDialogTagName,
-      properties: { 'data-dialog-type': dialogType, init },
+      properties: { 'data-dialog-variant': dialogVariant, init },
       slotContents: slotContents,
       cancel: () => {}, // todo!!!!!!!
     });

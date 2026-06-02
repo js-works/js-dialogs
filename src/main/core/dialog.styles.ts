@@ -67,17 +67,16 @@ const dialogStyles = css`
     padding: 0.25em;
   }
 
-  :host([data-dialog-type='info']) #icon,
-  :host([data-dialog-type='success']) #icon,
-  :host([data-dialog-type='confirm']) #icon,
-  :host([data-dialog-type='prompt']) #icon {
+  :host([data-dialog-variant='info']) #icon,
+  :host([data-dialog-variant='success']) #icon,
+  :host([data-dialog-variant='confirm']) #icon {
     color: ${theme.primaryBackgroundColor};
     background-color: color-mix(in srgb, ${theme.primaryBackgroundColor}, white 90%);
   }
 
-  :host([data-dialog-type='warn']) #icon,
-  :host([data-dialog-type='error']) #icon,
-  :host([data-dialog-type='confirmCritical']) #icon {
+  :host([data-dialog-variant='warn']) #icon,
+  :host([data-dialog-variant='error']) #icon,
+  :host([data-dialog-variant='confirm:critical']) #icon {
     color: ${theme.dangerBackgroundColor};
     background-color: color-mix(in srgb, ${theme.dangerBackgroundColor}, white 90%);
   }
@@ -143,26 +142,9 @@ const dialogStyles = css`
       .action-buttons {
         display: flex;
         flex-direction: row-reverse;
-        gap: 0.4em;
+        gap: 0.45em;
       }
     }
-  }
-
-  .prompt-label {
-    display: flex;
-    flex-direction: column;
-    font-weight: 600;
-    font-size: 90%;
-  }
-
-  .prompt-text-field {
-    width: 100%;
-    outline: none;
-    border: 1px solid #aaa;
-    box-sizing: border-box;
-    padding: 0.3em 0.7em;
-    margin: 0.125em 0;
-    font-size: 105%;
   }
 
   .action-button {

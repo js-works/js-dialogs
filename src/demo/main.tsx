@@ -8,7 +8,6 @@ import { dialogs } from './vanilla-dialogs.js';
 import './style.css';
 import '@mantine/core/styles.css';
 import { runWithOverlay } from '../main/core/overlay.js';
-import { createElement } from 'react';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
   <div id="column-1">
@@ -28,7 +27,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
 
 document.querySelector<HTMLButtonElement>('#temp')!.onclick = async () => {
   await runWithOverlay(async () => await sleep(2000));
-  await dialogs.confirmCritical({
+  await dialogs.confirm({
+    critical: true,
     title: 'Confirm deletion',
     content: 'Are you really sure that the file should be deleted?',
     buttonTexts: {
@@ -38,8 +38,9 @@ document.querySelector<HTMLButtonElement>('#temp')!.onclick = async () => {
 };
 
 document.querySelector<HTMLButtonElement>('#temp2')!.onclick = async () => {
-  dialogs.exec(async (dialog) => {
-    const confirmResult = await dialog.confirmCritical({
+  dialogs.flow(async (dialog) => {
+    const confirmResult = await dialog.confirm({
+      critical: true,
       title: 'Confirm deletion',
       content: 'Are you really sure that the file should be deleted?',
       buttonTexts: {
@@ -117,7 +118,8 @@ document.querySelector<HTMLButtonElement>('#btn-confirm')!.onclick = async () =>
 };
 
 document.querySelector<HTMLButtonElement>('#btn-confirm-critical')!.onclick = async () => {
-  const result = await dialogs.confirmCritical({
+  const result = await dialogs.confirm({
+    critical: true,
     title: 'Delete customer',
     subtitle: 'Customer: #1235 - Jane Doe',
     content: 'Are you really sure that the customer shall be deleted?\nThis cannot made undone.',
@@ -204,7 +206,8 @@ function MantineDialogDemo() {
   };
 
   const onConfirmCriticalClick = async () => {
-    const result = await dialogs.confirmCritical({
+    const result = await dialogs.confirm({
+      critical: true,
       title: 'Delete customer',
       subtitle: 'Customer: #1235 - Jane Doe',
       content: 'Are you really sure that the customer shall be deleted?\nThis cannot made undone.',
