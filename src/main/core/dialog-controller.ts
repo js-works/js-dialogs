@@ -41,12 +41,12 @@ interface MessageDialogConfig<C> extends BaseDialogConfig<C> {}
 interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {}
 
 interface DialogsFunctions<C> {
-  info(config: MessageDialogConfig<C>): Promise<DialogResult>;
-  success(config: MessageDialogConfig<C>): Promise<DialogResult>;
-  warn(config: MessageDialogConfig<C>): Promise<DialogResult>;
-  error(config: MessageDialogConfig<C>): Promise<DialogResult>;
-  confirm(config: ConfirmDialogConfig<C>): Promise<DialogResult>;
-  approve(config: ConfirmDialogConfig<C>): Promise<DialogResult>;
+  info(config: MessageDialogConfig<C>): Promise<InfoDialogResult>;
+  success(config: MessageDialogConfig<C>): Promise<SuccessDialogResult>;
+  warn(config: MessageDialogConfig<C>): Promise<WarnDialogResult>;
+  error(config: MessageDialogConfig<C>): Promise<ErrorDialogResult>;
+  confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult>;
+  confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmCriticalDialogResult>;
 }
 
 interface DialogsController<C> extends DialogsFunctions<C> {
@@ -55,12 +55,23 @@ interface DialogsController<C> extends DialogsFunctions<C> {
 
 interface DialogScope<C> extends DialogsFunctions<C> {}
 
-interface DialogResult<T = null> {
-  readonly confirmed: boolean;
-  readonly denied: boolean;
-  readonly declined: boolean;
-  data: T;
-}
+type DialogResult<A extends string, T = null> =
+  | {
+      canceled: false;
+      action: A;
+      data: T;
+    }
+  | {
+      canceled: true;
+      aborted: boolean;
+    };
+
+type InfoDialogResult = DialogResult<'ok', void>;
+type SuccessDialogResult = DialogResult<'ok', void>;
+type WarnDialogResult = DialogResult<'ok', void>;
+type ErrorDialogResult = DialogResult<'ok', void>;
+type ConfirmDialogResult = DialogResult<'confirm', boolean>;
+type ConfirmCriticalDialogResult = DialogResult<'confirm', boolean>;
 
 interface ButtonConfig {
   id: Symbol;
@@ -143,34 +154,34 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     }
   }
 
-  info(config: MessageDialogConfig<C>): Promise<DialogResult> {
+  info(config: MessageDialogConfig<C>): Promise<InfoDialogResult> {
     const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
     return scope.info(config);
   }
 
-  success(config: MessageDialogConfig<C>): Promise<DialogResult> {
+  success(config: MessageDialogConfig<C>): Promise<InfoDialogResult> {
     const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
     return scope.success(config);
   }
 
-  warn(config: MessageDialogConfig<C>): Promise<DialogResult> {
+  warn(config: MessageDialogConfig<C>): Promise<WarnDialogResult> {
     const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
     return scope.warn(config);
   }
 
-  error(config: MessageDialogConfig<C>): Promise<DialogResult> {
+  error(config: MessageDialogConfig<C>): Promise<ErrorDialogResult> {
     const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
     return scope.error(config);
   }
 
-  confirm(config: ConfirmDialogConfig<C>): Promise<DialogResult> {
+  confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
     const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
     return scope.confirm(config);
   }
 
-  approve(config: ConfirmDialogConfig<C>): Promise<DialogResult> {
+  confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmCriticalDialogResult> {
     const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
-    return scope.approve(config);
+    return scope.confirmCritical(config);
   }
 }
 
@@ -223,7 +234,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     });
   }
 
-  async info(config: MessageDialogConfig<C>): Promise<DialogResult> {
+  async info(config: MessageDialogConfig<C>): Promise<InfoDialogResult> {
     if (this.#closePrevious) {
       await this.#closePrevious();
     }
@@ -240,29 +251,29 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     }
   }
 
-  async success(config: MessageDialogConfig<C>): Promise<DialogResult> {
+  async success(config: MessageDialogConfig<C>): Promise<SuccessDialogResult> {
     await this.#prepare();
     return this.#openDialog('success', config, null, [this.#confirmBtn]);
   }
 
-  async warn(config: MessageDialogConfig<C>): Promise<DialogResult> {
+  async warn(config: MessageDialogConfig<C>): Promise<WarnDialogResult> {
     await this.#prepare();
     return this.#openDialog('warn', config, null, [this.#okBtnDanger]);
   }
 
-  async error(config: MessageDialogConfig<C>): Promise<DialogResult> {
+  async error(config: MessageDialogConfig<C>): Promise<ErrorDialogResult> {
     await this.#prepare();
     return this.#openDialog('error', config, null, [this.#okBtnDanger]);
   }
 
-  async confirm(config: ConfirmDialogConfig<C>): Promise<DialogResult> {
+  async confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
     await this.#prepare();
     return this.#openDialog('confirm', config, null, [this.#confirmBtn, this.#cancelBtn]);
   }
 
-  async approve(config: ConfirmDialogConfig<C>): Promise<DialogResult> {
+  async confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmCriticalDialogResult> {
     await this.#prepare();
-    return this.#openDialog('approve', config, null, [this.#okBtnDanger, this.#cancelBtn]);
+    return this.#openDialog('confirmCritical', config, null, [this.#okBtnDanger, this.#cancelBtn]);
   }
 
   async #openDialog(
@@ -305,19 +316,19 @@ class DefaultDialogScope<C> implements DialogScope<C> {
         case 'success':
         case 'warn':
         case 'error':
-          setResult({
-            confirmed: id === symbolConfirm,
-            declined: false,
-            aborted: id === symbolCancel,
-          });
+          setResult(
+            id !== symbolConfirm
+              ? { canceled: true, aborted: false }
+              : { canceled: false, aborted: false, data: null }
+          );
           break;
         case 'confirm':
-        case 'approve':
-          setResult({
-            confirmed: id === symbolConfirm,
-            declined: id !== symbolConfirm,
-            aborted: id === symbolCancel,
-          });
+        case 'confirmCritical':
+          setResult(
+            id !== symbolConfirm
+              ? { canceled: true, aborted: false }
+              : { canceled: false, aborted: false, data: null }
+          );
           break;
       }
     };

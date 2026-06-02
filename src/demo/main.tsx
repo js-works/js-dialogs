@@ -16,7 +16,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
     <button id="btn-warn" class="btn">Warn (vanilla)</button>
     <button id="btn-error" class="btn">Error (vanilla)</button>
     <button id="btn-confirm" class="btn">Confirm (vanilla)</button>
-    <button id="btn-approve" class="btn">Approve (vanilla)</button>
+    <button id="btn-confirm-critical" class="btn">Confirm critical (vanilla)</button>
     <br />
     <button id="temp" class="btn">Click me</button>
     <button id="temp2" class="btn">Click me</button>
@@ -26,8 +26,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
 
 document.querySelector<HTMLButtonElement>('#temp')!.onclick = async () => {
   await runWithOverlay(async () => await sleep(2000));
-  await dialogs.approve({
-    title: 'Approve deletion',
+  await dialogs.confirmCritical({
+    title: 'Confirm deletion',
     content: 'Are you really sure that the file should be deleted?',
     buttonTexts: {
       confirm: 'Delete File',
@@ -36,30 +36,28 @@ document.querySelector<HTMLButtonElement>('#temp')!.onclick = async () => {
 };
 
 document.querySelector<HTMLButtonElement>('#temp2')!.onclick = async () => {
-  dialogs.exec(async (scope) => {
-    await sleep(1500)
-
-    const confirmResult = await scope.approve({
-      title: 'Approve deletion',
+  dialogs.exec(async (dialog) => {
+    const confirmResult = await dialog.confirmCritical({
+      title: 'Confirm deletion',
       content: 'Are you really sure that the file should be deleted?',
       buttonTexts: {
         confirm: 'Delete File',
       },
     });
 
-    if (!confirmResult.confirmed) {
-      //return;
+    if (confirmResult.canceled) {
+      return;
     }
 
     await sleep(3000);
 
     if (true) {
-      await scope.info({
+      await dialog.info({
         title: 'Success',
         content: 'File deleted successfully',
       });
     } else {
-      await scope.error({
+      await dialog.error({
         title: 'Error',
         content: 'File could not be deleted',
       });
@@ -116,8 +114,8 @@ document.querySelector<HTMLButtonElement>('#btn-confirm')!.onclick = async () =>
   console.log(result);
 };
 
-document.querySelector<HTMLButtonElement>('#btn-approve')!.onclick = async () => {
-  const result = await dialogs.approve({
+document.querySelector<HTMLButtonElement>('#btn-confirm-critical')!.onclick = async () => {
+  const result = await dialogs.confirmCritical({
     title: 'Delete customer',
     subtitle: 'Customer: #1235 - Jane Doe',
     content: 'Are you really sure that the customer shall be deleted?\nThis cannot made undone.',
@@ -191,8 +189,8 @@ function MantineDialogDemo() {
     console.log(result);
   };
 
-  const onApproveClick = async () => {
-    const result = await dialogs.approve({
+  const onConfirmCriticalClick = async () => {
+    const result = await dialogs.confirmCritical({
       title: 'Delete customer',
       subtitle: 'Customer: #1235 - Jane Doe',
       content: 'Are you really sure that the customer shall be deleted?\nThis cannot made undone.',
@@ -211,7 +209,7 @@ function MantineDialogDemo() {
       <Button onClick={onWarnClick}>Warn (Mantine)</Button>
       <Button onClick={onErrorClick}>Error (Mantine)</Button>
       <Button onClick={onConfirmClick}>Confirm (Mantine)</Button>
-      <Button onClick={onApproveClick}>Approve (Mantine)</Button>
+      <Button onClick={onConfirmCriticalClick}>Confirm critical (Mantine)</Button>
     </>
   );
 }
