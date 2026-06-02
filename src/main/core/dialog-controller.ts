@@ -39,6 +39,7 @@ interface BaseDialogConfig<C> {
 interface MessageDialogConfig<C> extends BaseDialogConfig<C> {}
 
 interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {}
+interface InputDialogConfig<C> extends BaseDialogConfig<C> {}
 
 interface DialogsFunctions<C> {
   info(config: MessageDialogConfig<C>): Promise<InfoDialogResult>;
@@ -47,6 +48,7 @@ interface DialogsFunctions<C> {
   error(config: MessageDialogConfig<C>): Promise<ErrorDialogResult>;
   confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult>;
   confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmCriticalDialogResult>;
+  input(config: InputDialogConfig<C>): Promise<InputDialogResult>;
 }
 
 interface DialogsController<C> extends DialogsFunctions<C> {
@@ -72,6 +74,7 @@ type WarnDialogResult = DialogResult<'ok', void>;
 type ErrorDialogResult = DialogResult<'ok', void>;
 type ConfirmDialogResult = DialogResult<'confirm', boolean>;
 type ConfirmCriticalDialogResult = DialogResult<'confirm', boolean>;
+type InputDialogResult = DialogResult<'confirm', FormData>;
 
 interface ButtonConfig {
   id: Symbol;
@@ -183,6 +186,11 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
     return scope.confirmCritical(config);
   }
+
+  input(config: InputDialogConfig<C>): Promise<InputDialogResult> {
+    const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
+    return scope.input(config);
+  }
 }
 
 class DefaultDialogScope<C> implements DialogScope<C> {
@@ -200,7 +208,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     text: 'Ok',
   };
 
-  readonly #okBtnDanger: ButtonConfig = {
+  readonly #confirmBtnDanger: ButtonConfig = {
     id: symbolConfirm,
     type: 'danger',
     text: 'Ok',
@@ -258,12 +266,12 @@ class DefaultDialogScope<C> implements DialogScope<C> {
 
   async warn(config: MessageDialogConfig<C>): Promise<WarnDialogResult> {
     await this.#prepare();
-    return this.#openDialog('warn', config, null, [this.#okBtnDanger]);
+    return this.#openDialog('warn', config, null, [this.#confirmBtnDanger]);
   }
 
   async error(config: MessageDialogConfig<C>): Promise<ErrorDialogResult> {
     await this.#prepare();
-    return this.#openDialog('error', config, null, [this.#okBtnDanger]);
+    return this.#openDialog('error', config, null, [this.#confirmBtnDanger]);
   }
 
   async confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
@@ -273,7 +281,15 @@ class DefaultDialogScope<C> implements DialogScope<C> {
 
   async confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmCriticalDialogResult> {
     await this.#prepare();
-    return this.#openDialog('confirmCritical', config, null, [this.#okBtnDanger, this.#cancelBtn]);
+    return this.#openDialog('confirmCritical', config, null, [
+      this.#confirmBtnDanger,
+      this.#cancelBtn,
+    ]);
+  }
+
+  async input(config: InputDialogConfig<C>): Promise<InputDialogResult> {
+    await this.#prepare();
+    return this.#openDialog('input', config, null, [this.#confirmBtnDanger, this.#cancelBtn]);
   }
 
   async #openDialog(
@@ -316,18 +332,19 @@ class DefaultDialogScope<C> implements DialogScope<C> {
         case 'success':
         case 'warn':
         case 'error':
-          setResult(
-            id !== symbolConfirm
-              ? { canceled: true, aborted: false }
-              : { canceled: false, aborted: false, data: null }
-          );
-          break;
         case 'confirm':
         case 'confirmCritical':
           setResult(
-            id !== symbolConfirm
-              ? { canceled: true, aborted: false }
-              : { canceled: false, aborted: false, data: null }
+            id === symbolConfirm
+              ? { canceled: false, aborted: false, data: null }
+              : { canceled: true, aborted: false }
+          );
+          break;
+        case 'input':
+          setResult(
+            id === symbolConfirm
+              ? { canceled: false, aborted: false, data: {} }
+              : { canceled: true, aborted: false }
           );
           break;
       }

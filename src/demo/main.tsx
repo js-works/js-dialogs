@@ -1,6 +1,6 @@
 import { html } from '../main/index.js';
 import { createRoot } from 'react-dom/client';
-import { Button, MantineProvider } from '@mantine/core';
+import { Button, MantineProvider, PasswordInput, TextInput } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { useMantineDialogs } from '../mantine/use-mantine-dialogs.js';
 import { dialogs } from './vanilla-dialogs.js';
@@ -8,6 +8,7 @@ import { dialogs } from './vanilla-dialogs.js';
 import './style.css';
 import '@mantine/core/styles.css';
 import { runWithOverlay } from '../main/core/overlay.js';
+import { createElement } from 'react';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
   <div id="column-1">
@@ -17,6 +18,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
     <button id="btn-error" class="btn">Error (vanilla)</button>
     <button id="btn-confirm" class="btn">Confirm (vanilla)</button>
     <button id="btn-confirm-critical" class="btn">Confirm critical (vanilla)</button>
+    <button id="btn-input" class="btn">Input</button>
     <br />
     <button id="temp" class="btn">Click me</button>
     <button id="temp2" class="btn">Click me</button>
@@ -127,6 +129,18 @@ document.querySelector<HTMLButtonElement>('#btn-confirm-critical')!.onclick = as
   console.log(result);
 };
 
+document.querySelector<HTMLButtonElement>('#btn-input')!.onclick = async () => {
+  const result = await dialogs.input({
+    title: 'Delete customer',
+    content: 'xxx',
+    buttonTexts: {
+      confirm: 'Delete',
+    },
+  });
+
+  console.log(result);
+};
+
 // === React /Mantine ================================================
 
 const container = document.querySelector('#column-2')!;
@@ -202,6 +216,23 @@ function MantineDialogDemo() {
     console.log(result);
   };
 
+  const onInputClick = async () => {
+    const result = await dialogs.input({
+      title: 'Switch user',
+      content: (
+        <>
+          <TextInput label="Username" name="username" required />
+          <PasswordInput label="Pasword" name="password" required />
+        </>
+      ),
+      buttonTexts: {
+        confirm: 'Switch',
+      },
+    });
+
+    console.log(result);
+  };
+
   return (
     <>
       <Button onClick={onInfoClick}>Info (Mantine)</Button>
@@ -210,6 +241,7 @@ function MantineDialogDemo() {
       <Button onClick={onErrorClick}>Error (Mantine)</Button>
       <Button onClick={onConfirmClick}>Confirm (Mantine)</Button>
       <Button onClick={onConfirmCriticalClick}>Confirm critical (Mantine)</Button>
+      <Button onClick={onInputClick}>Input (Mantine)</Button>
     </>
   );
 }

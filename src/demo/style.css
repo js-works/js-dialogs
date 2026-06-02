@@ -17,14 +17,14 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-width: 10rem;
+  max-width: 18rem;
 }
 
 #column-2 {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-width: 10rem;
+  max-width: 18rem;
 }
 
 .btn {
