@@ -13,7 +13,7 @@ export type {
 
 type Renderable<C> = C | string | number | null | undefined;
 
-type DialogType = 'info' | 'success' | 'warn' | 'error' | 'confirm' | 'confirmCritical' | 'input';
+type DialogType = 'info' | 'success' | 'warn' | 'error' | 'confirm' | 'ask' | 'input';
 
 type ActionButtonType = 'primary' | 'secondary' | 'danger';
 

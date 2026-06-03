@@ -30,7 +30,7 @@ const dialogStyles = css`
     border: none;
     border-radius: ${theme.dialogBorderRadius};
     outline: none;
-    min-width: 25em;
+    min-width: 22em;
     box-sizing: border-box;
     padding: 0;
     margin: 0 auto;
@@ -69,14 +69,16 @@ const dialogStyles = css`
 
   :host([data-dialog-variant='info']) #icon,
   :host([data-dialog-variant='success']) #icon,
-  :host([data-dialog-variant='confirm']) #icon {
+  :host([data-dialog-variant='confirm']) #icon,
+  :host([data-dialog-variant='ask']) #icon {
     color: ${theme.primaryBackgroundColor};
     background-color: color-mix(in srgb, ${theme.primaryBackgroundColor}, white 90%);
   }
 
   :host([data-dialog-variant='warn']) #icon,
   :host([data-dialog-variant='error']) #icon,
-  :host([data-dialog-variant='confirm:critical']) #icon {
+  :host([data-dialog-variant='confirm:critical']) #icon,
+  :host([data-dialog-variant='ask:critical']) #icon {
     color: ${theme.dangerBackgroundColor};
     background-color: color-mix(in srgb, ${theme.dangerBackgroundColor}, white 90%);
   }
@@ -125,7 +127,7 @@ const dialogStyles = css`
       flex-direction: column;
       gap: 0.5em;
       padding: 0 1.25em 0.75em 1.25em;
-      min-height: 3em;
+      min-height: 2em;
       line-height: 1.25em;
 
       .intro,
@@ -142,7 +144,7 @@ const dialogStyles = css`
       .action-buttons {
         display: flex;
         flex-direction: row-reverse;
-        gap: 0.45em;
+        gap: 0.4em;
       }
     }
   }
@@ -153,6 +155,7 @@ const dialogStyles = css`
     border: none;
     border-radius: ${theme.actionButtonBorderRadius};
     padding: 0.6em 1.75em;
+    font-weight: 600;
     cursor: pointer;
 
     &.loading {

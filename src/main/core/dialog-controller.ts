@@ -14,7 +14,6 @@ import type {
 
 import { dialogStyles } from './dialog.styles.js';
 import { createToggle, type Toggle } from './toggles.js';
-import { isResultObject, type Result } from './result.js';
 import { runWithOverlay, showOverlay } from './overlay.js';
 
 export { createDialogsController, css, h, html, svg, type DialogsController };
@@ -42,6 +41,10 @@ interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {
   critical?: boolean;
 }
 
+interface AskDialogConfig<C> extends BaseDialogConfig<C> {
+  critical?: boolean;
+}
+
 interface InputDialogConfig<C> extends BaseDialogConfig<C> {
   critical?: boolean;
 }
@@ -52,6 +55,7 @@ interface DialogsFunctions<C> {
   warn(config: MessageDialogConfig<C>): Promise<WarnDialogResult>;
   error(config: MessageDialogConfig<C>): Promise<ErrorDialogResult>;
   confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult>;
+  ask(config: ConfirmDialogConfig<C>): Promise<AskDialogResult>;
   input(config: InputDialogConfig<C>): Promise<InputDialogResult>;
 }
 
@@ -72,11 +76,12 @@ type DialogResult<A extends string, T = null> =
       aborted: boolean;
     };
 
-type InfoDialogResult = DialogResult<'ok', void>;
-type SuccessDialogResult = DialogResult<'ok', void>;
-type WarnDialogResult = DialogResult<'ok', void>;
-type ErrorDialogResult = DialogResult<'ok', void>;
-type ConfirmDialogResult = DialogResult<'confirm', boolean>;
+type InfoDialogResult = DialogResult<'ok'>;
+type SuccessDialogResult = DialogResult<'ok'>;
+type WarnDialogResult = DialogResult<'ok'>;
+type ErrorDialogResult = DialogResult<'ok'>;
+type ConfirmDialogResult = DialogResult<'confirm'>;
+type AskDialogResult = DialogResult<'confirm' | 'decline'>;
 type InputDialogResult = DialogResult<'confirm', FormData>;
 
 interface ButtonConfig {
@@ -89,6 +94,7 @@ interface ButtonConfig {
 // Constants
 // ===================================================================
 
+const symbolOk = Symbol('ok');
 const symbolCancel = Symbol('cancel');
 const symbolConfirm = Symbol('confirm');
 const symbolDecline = Symbol('decline');
@@ -185,6 +191,11 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     return scope.confirm(config);
   }
 
+  ask(config: AskDialogConfig<C>): Promise<AskDialogResult> {
+    const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
+    return scope.ask(config);
+  }
+
   input(config: InputDialogConfig<C>): Promise<InputDialogResult> {
     const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
     return scope.input(config);
@@ -199,6 +210,18 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   #autoCloseDialogs: boolean;
 
   #timeout: any = null;
+
+  readonly #okBtn: ButtonConfig = {
+    id: symbolOk,
+    type: 'primary',
+    text: 'Ok',
+  };
+
+  readonly #okBtnDanger: ButtonConfig = {
+    id: symbolOk,
+    type: 'danger',
+    text: 'Ok',
+  };
 
   readonly #confirmBtn: ButtonConfig = {
     id: symbolConfirm,
@@ -216,6 +239,24 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     id: symbolCancel,
     type: 'secondary',
     text: 'Cancel',
+  };
+
+  readonly #yesBtn: ButtonConfig = {
+    id: symbolConfirm,
+    type: 'primary',
+    text: 'Yes',
+  };
+
+  readonly #yesBtnDanger: ButtonConfig = {
+    id: symbolConfirm,
+    type: 'danger',
+    text: 'Yes',
+  };
+
+  readonly #noBtn: ButtonConfig = {
+    id: symbolDecline,
+    type: 'secondary',
+    text: 'No',
   };
 
   constructor(
@@ -240,13 +281,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     });
   }
 
-  async info(config: MessageDialogConfig<C>): Promise<InfoDialogResult> {
-    if (this.#closePrevious) {
-      await this.#closePrevious();
-    }
-    return this.#openDialog('info', config, null, [this.#confirmBtn]);
-  }
-
   async #prepare() {
     if (this.#closePrevious) {
       try {
@@ -257,19 +291,26 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     }
   }
 
+  async info(config: MessageDialogConfig<C>): Promise<InfoDialogResult> {
+    if (this.#closePrevious) {
+      await this.#closePrevious();
+    }
+    return this.#openDialog('info', 'info', config, null, [this.#okBtn]);
+  }
+
   async success(config: MessageDialogConfig<C>): Promise<SuccessDialogResult> {
     await this.#prepare();
-    return this.#openDialog('success', 'success', config, null, [this.#confirmBtn]);
+    return this.#openDialog('success', 'success', config, null, [this.#okBtn]);
   }
 
   async warn(config: MessageDialogConfig<C>): Promise<WarnDialogResult> {
     await this.#prepare();
-    return this.#openDialog('warn', 'warn', config, null, [this.#confirmBtnDanger]);
+    return this.#openDialog('warn', 'warn', config, null, [this.#okBtnDanger]);
   }
 
   async error(config: MessageDialogConfig<C>): Promise<ErrorDialogResult> {
     await this.#prepare();
-    return this.#openDialog('error', 'error', config, null, [this.#confirmBtnDanger]);
+    return this.#openDialog('error', 'error', config, null, [this.#okBtnDanger]);
   }
 
   async confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
@@ -281,6 +322,15 @@ class DefaultDialogScope<C> implements DialogScope<C> {
       null,
       [config.critical ? this.#confirmBtnDanger : this.#confirmBtn, this.#cancelBtn]
     );
+  }
+
+  async ask(config: AskDialogConfig<C>): Promise<AskDialogResult> {
+    await this.#prepare();
+    return this.#openDialog('ask', config.critical ? 'ask:critical' : 'ask', config, null, [
+      config.critical ? this.#yesBtnDanger : this.#yesBtn,
+      this.#noBtn,
+      this.#cancelBtn,
+    ]);
   }
 
   async input(config: InputDialogConfig<C>): Promise<InputDialogResult> {
@@ -333,17 +383,17 @@ class DefaultDialogScope<C> implements DialogScope<C> {
         case 'warn':
         case 'error':
         case 'confirm':
-        case 'confirmCritical':
+        case 'ask':
           setResult(
-            id === symbolConfirm
-              ? { canceled: false, aborted: false, data: null }
+            id === symbolOk || id === symbolConfirm || id === symbolDecline
+              ? { canceled: false, aborted: false, action: id.description, data: null }
               : { canceled: true, aborted: false }
           );
           break;
         case 'input':
           setResult(
             id === symbolConfirm
-              ? { canceled: false, aborted: false, data: {} }
+              ? { canceled: false, aborted: false, action: id.description, data: {} }
               : { canceled: true, aborted: false }
           );
           break;
@@ -424,7 +474,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
 
   #initialize(tagName: string) {
     const styles = this.#adapter.getStyles?.(tagName) || null;
-    console.log(tagName);
 
     if (styles) {
       const styleSheet = new CSSStyleSheet();
