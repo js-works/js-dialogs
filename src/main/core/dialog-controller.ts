@@ -14,7 +14,7 @@ import type {
 
 import { dialogStyles } from './dialog.styles.js';
 import { createToggle, type Toggle } from './toggles.js';
-import { runWithOverlay, showOverlay } from './overlay.js';
+import { showOverlay } from './overlay.js';
 import { defaultDialogTexts, type TextKey } from './i18n.js';
 
 export { createDialogsController, css, h, html, svg, type DialogsController };
@@ -46,7 +46,7 @@ interface AskDialogConfig<C> extends BaseDialogConfig<C> {
   critical?: boolean;
 }
 
-interface InputDialogConfig<C> extends BaseDialogConfig<C> {
+interface FormDialogConfig<C> extends BaseDialogConfig<C> {
   critical?: boolean;
 }
 
@@ -57,7 +57,7 @@ interface DialogsFunctions<C> {
   error(config: MessageDialogConfig<C>): Promise<ErrorDialogResult>;
   confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult>;
   ask(config: ConfirmDialogConfig<C>): Promise<AskDialogResult>;
-  input(config: InputDialogConfig<C>): Promise<InputDialogResult>;
+  form(config: FormDialogConfig<C>): Promise<FormDialogResult>;
 }
 
 interface DialogsController<C> extends DialogsFunctions<C> {
@@ -83,12 +83,13 @@ type WarnDialogResult = DialogResult<'ok'>;
 type ErrorDialogResult = DialogResult<'ok'>;
 type ConfirmDialogResult = DialogResult<'confirm'>;
 type AskDialogResult = DialogResult<'confirm' | 'decline'>;
-type InputDialogResult = DialogResult<'confirm', FormData>;
+type FormDialogResult = DialogResult<'confirm', FormData>;
 
 interface ButtonConfig {
   id: Symbol;
   type: 'primary' | 'secondary' | 'danger';
   text: string;
+  validate: boolean;
 }
 
 // ===================================================================
@@ -197,9 +198,9 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     return scope.ask(config);
   }
 
-  input(config: InputDialogConfig<C>): Promise<InputDialogResult> {
+  form(config: FormDialogConfig<C>): Promise<FormDialogResult> {
     const scope = new DefaultDialogScope(null, null, this.#config, this.#adapter);
-    return scope.input(config);
+    return scope.form(config);
   }
 }
 
@@ -216,48 +217,56 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     id: symbolOk,
     type: 'primary',
     text: 'Ok',
+    validate: true,
   };
 
   readonly #okBtnDanger: ButtonConfig = {
     id: symbolOk,
     type: 'danger',
     text: 'Ok',
+    validate: true,
   };
 
   readonly #confirmBtn: ButtonConfig = {
     id: symbolConfirm,
     type: 'primary',
     text: 'Ok',
+    validate: true,
   };
 
   readonly #confirmBtnDanger: ButtonConfig = {
     id: symbolConfirm,
     type: 'danger',
     text: 'Ok',
+    validate: true,
   };
 
   readonly #cancelBtn: ButtonConfig = {
     id: symbolCancel,
     type: 'secondary',
     text: 'Cancel',
+    validate: false,
   };
 
   readonly #yesBtn: ButtonConfig = {
     id: symbolConfirm,
     type: 'primary',
     text: 'Yes',
+    validate: true,
   };
 
   readonly #yesBtnDanger: ButtonConfig = {
     id: symbolConfirm,
     type: 'danger',
     text: 'Yes',
+    validate: true,
   };
 
   readonly #noBtn: ButtonConfig = {
     id: symbolDecline,
     type: 'secondary',
     text: 'No',
+    validate: false,
   };
 
   constructor(
@@ -324,7 +333,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     ]);
   }
 
-  async input(config: InputDialogConfig<C>): Promise<InputDialogResult> {
+  async form(config: FormDialogConfig<C>): Promise<FormDialogResult> {
     await this.#prepare();
     return this.#openDialog('input', config.critical ? 'input:critical' : 'input', config, null, [
       config.critical ? this.#confirmBtnDanger : this.#confirmBtn,

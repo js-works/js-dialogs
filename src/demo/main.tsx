@@ -28,10 +28,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
 
 document.querySelector<HTMLButtonElement>('#temp')!.onclick = async () => {
   await runWithOverlay(async () => await sleep(2000));
+
   await dialogs.confirm({
     critical: true,
     title: 'Confirm deletion',
-    content: 'Are you really sure that the file should be deleted?',
+    content: 'Are you really sure that the file shall be deleted?',
     buttonTexts: {
       confirm: 'Delete File',
     },
@@ -138,7 +139,7 @@ document.querySelector<HTMLButtonElement>('#btn-ask')!.onclick = async () => {
 };
 
 document.querySelector<HTMLButtonElement>('#btn-input')!.onclick = async () => {
-  const result = await dialogs.input({
+  const result = await dialogs.form({
     title: 'Delete customer',
     content: 'xxx',
     buttonTexts: {
@@ -223,7 +224,7 @@ function MantineDialogDemo() {
   };
 
   const onInputClick = async () => {
-    const result = await dialogs.input({
+    const result = await dialogs.form({
       title: 'Switch user',
       content: (
         <>
