@@ -57,12 +57,10 @@ document.querySelector<HTMLButtonElement>('#temp2')!.onclick = async () => {
 
     if (true) {
       await scope.success({
-        title: 'Success',
         content: 'File deleted successfully',
       });
     } else {
       await scope.error({
-        title: 'Error',
         content: 'File could not be deleted',
       });
     }
@@ -71,7 +69,6 @@ document.querySelector<HTMLButtonElement>('#temp2')!.onclick = async () => {
 
 document.querySelector<HTMLButtonElement>('#btn-info')!.onclick = async () => {
   const result = await dialogs.info({
-    title: 'Welcome',
     content: 'Hello, Jane Doe!',
   });
 
@@ -89,7 +86,6 @@ document.querySelector<HTMLButtonElement>('#btn-success')!.onclick = async () =>
 
 document.querySelector<HTMLButtonElement>('#btn-warn')!.onclick = async () => {
   const result = await dialogs.warn({
-    title: 'Warning',
     content: 'Hello, Jane Doe!',
   });
 
@@ -174,7 +170,6 @@ function MantineDialogDemo() {
 
   const onSuccessClick = async () => {
     const result = await dialogs.success({
-      title: 'Success',
       subtitle: 'Bla bla bla...',
       content: 'Happy New Year 2026',
     });
@@ -184,7 +179,6 @@ function MantineDialogDemo() {
 
   const onWarnClick = async () => {
     const result = await dialogs.warn({
-      title: 'Warning',
       subtitle: 'Bla bla bla...',
       content: 'Happy New Year 2026',
     });
@@ -194,7 +188,6 @@ function MantineDialogDemo() {
 
   const onErrorClick = async () => {
     const result = await dialogs.error({
-      title: 'Error',
       subtitle: 'Bla bla bla...',
       content: 'Happy New Year 2026',
     });

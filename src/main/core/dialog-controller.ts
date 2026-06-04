@@ -15,6 +15,7 @@ import type {
 import { dialogStyles } from './dialog.styles.js';
 import { createToggle, type Toggle } from './toggles.js';
 import { runWithOverlay, showOverlay } from './overlay.js';
+import { defaultDialogTexts, type TextKey } from './i18n.js';
 
 export { createDialogsController, css, h, html, svg, type DialogsController };
 
@@ -281,16 +282,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     });
   }
 
-  async #prepare() {
-    if (this.#closePrevious) {
-      try {
-        await this.#closePrevious();
-      } finally {
-        this.#closePrevious = null;
-      }
-    }
-  }
-
   async info(config: MessageDialogConfig<C>): Promise<InfoDialogResult> {
     if (this.#closePrevious) {
       await this.#closePrevious();
@@ -424,7 +415,25 @@ class DefaultDialogScope<C> implements DialogScope<C> {
       internalSlotContents.push(['dialog-icon', html.raw(icon.getSvgText())]);
     }
 
-    for (const slot of ['title', 'subtitle', 'intro', 'content', 'outro']) {
+    const title =
+      baseConfig.title ??
+      this.#getText(
+        (
+          {
+            info: 'information',
+            success: 'success',
+            warn: 'warning',
+            error: 'error',
+            confirm: 'confirmation',
+            ask: 'question',
+            input: 'question',
+          } as const
+        )[dialogType]
+      );
+
+    slotContents.push(['title', title]);
+
+    for (const slot of ['subtitle', 'intro', 'content', 'outro']) {
       slotContents.push([slot, (baseConfig as any)[slot]]);
     }
 
@@ -482,6 +491,24 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     }
 
     this.#initialized = true;
+  }
+
+  async #prepare() {
+    if (this.#closePrevious) {
+      try {
+        await this.#closePrevious();
+      } finally {
+        this.#closePrevious = null;
+      }
+    }
+  }
+
+  #getText(textKey: TextKey) {
+    if (this.#config.getText) {
+      return (this, this.#config.getText(textKey));
+    }
+
+    return defaultDialogTexts[textKey];
   }
 
   #renderDefaultCloseButton(text: string, onClick: () => void) {

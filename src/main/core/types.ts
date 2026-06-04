@@ -1,6 +1,7 @@
 import { SvgContent } from './svg';
 import { CssContent } from './css';
 import type { Toggle } from './toggles';
+import type { TextKey } from './i18n';
 
 export type {
   ActionButtonType,
@@ -47,6 +48,7 @@ interface DialogAdapter<C> {
 }
 
 interface DialogControllerConfig {
+  getText?(textKey: TextKey): string;
   getDialogIcon?(dialogType: DialogType): SvgContent | null;
 }
 
