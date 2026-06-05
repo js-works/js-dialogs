@@ -33,6 +33,8 @@ interface DialogAdapter<C> {
     closeDialog: () => Promise<void>;
   };
 
+  renderForm(children: C, onSubmit: (ev: SubmitEvent) => void): C;
+
   renderSpinner?(): Renderable<C>;
 
   renderCloseButton?(text: string, onClick: () => void): Renderable<C>;

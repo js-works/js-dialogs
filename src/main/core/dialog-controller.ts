@@ -443,7 +443,16 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     slotContents.push(['title', title]);
 
     for (const slot of ['subtitle', 'intro', 'content', 'outro']) {
-      slotContents.push([slot, (baseConfig as any)[slot]]);
+      let children = (baseConfig as any)[slot];
+
+      // TODO!!!!!!
+      if (slot === 'content' && this.#adapter.renderForm) {
+        children = this.#adapter.renderForm?.(children, () => {
+          alert('TODO');
+        });
+      }
+
+      slotContents.push([slot, children]);
     }
 
     const closeButton = (

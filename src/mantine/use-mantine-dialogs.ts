@@ -88,6 +88,10 @@ function createMantineDialogAdapter(
       };
     },
 
+    renderForm(children, onSubmit) {
+      return h('form', { onSubmit }, children);
+    },
+
     renderCloseButton(text: any, onClick: any) {
       return h(CloseButton as any, { title: text, onClick });
     },
