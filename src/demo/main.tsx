@@ -17,8 +17,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
     <button id="btn-error" class="btn">Error (vanilla)</button>
     <button id="btn-confirm" class="btn">Confirm (vanilla)</button>
     <button id="btn-confirm-critical" class="btn">Confirm critical (vanilla)</button>
-    <button id="btn-ask" class="btn">Ask (vanilla)</button>
-    <button id="btn-input" class="btn">Input</button>
+    <button id="btn-decide" class="btn">Decide (vanilla)</button>
+    <button id="btn-form" class="btn">Form</button>
     <br />
     <button id="temp" class="btn">Click me</button>
     <button id="temp2" class="btn">Click me</button>
@@ -129,8 +129,8 @@ document.querySelector<HTMLButtonElement>('#btn-confirm-critical')!.onclick = as
   console.log(result);
 };
 
-document.querySelector<HTMLButtonElement>('#btn-ask')!.onclick = async () => {
-  const result = await dialogs.ask({
+document.querySelector<HTMLButtonElement>('#btn-decide')!.onclick = async () => {
+  const result = await dialogs.decide({
     title: "Question",
     content: 'Do you want the configuration to be reset?'
   });
@@ -138,7 +138,7 @@ document.querySelector<HTMLButtonElement>('#btn-ask')!.onclick = async () => {
   console.log(result);
 };
 
-document.querySelector<HTMLButtonElement>('#btn-input')!.onclick = async () => {
+document.querySelector<HTMLButtonElement>('#btn-form')!.onclick = async () => {
   const result = await dialogs.form({
     title: 'Delete customer',
     content: 'xxx',

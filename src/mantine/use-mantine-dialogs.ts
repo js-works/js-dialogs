@@ -2,7 +2,7 @@ import { createDialogsController } from '../main/core/dialog-controller.js';
 import { Button, CloseButton } from '@mantine/core';
 import { useModals } from '@mantine/modals';
 import { createElement as h, useEffect, useState, type ReactNode } from 'react';
-import { type ActionButtonType, type DialogAdapter } from '../main/core/types.js';
+import { type ActionButtonType, type DialogAdapter } from '../main/core/public-types.js';
 import { DefaultIconsPlugin } from '../main/plugins/default-icons.js';
 import type { Toggle } from '../main/core/toggles.js';
 

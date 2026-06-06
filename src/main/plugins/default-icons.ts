@@ -1,5 +1,5 @@
 import { svg, SvgContent } from '../core/svg.js';
-import type { Plugin, DialogType, DialogControllerConfig } from '../core/types.js';
+import type { Plugin, DialogType, DialogControllerConfig } from '../core/public-types.js';
 
 export { DefaultIconsPlugin };
 

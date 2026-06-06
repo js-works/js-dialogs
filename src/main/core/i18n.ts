@@ -8,15 +8,17 @@ type TextKey = keyof typeof defaultDialogTexts;
 const defaultDialogTexts = {
   cancel: 'Cancel',
   close: 'Close',
-  confirmation: 'Confirmation',
-  error: 'Error',
-  information: 'Information',
   no: 'No',
   ok: 'Ok',
-  question: 'Question',
-  success: 'Success',
-  warning: 'Warning',
   yes: 'Yes',
+
+  titleInfo: 'Information',
+  titleSuccess: 'Success',
+  titleWarn: 'Warning',
+  titleError: 'Error',
+  titleConfirm: 'Confirmation',
+  titleDecide: 'Decision',
+  titleForm: 'Enter details',
 } as const;
 
 class Translator {
