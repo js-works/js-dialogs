@@ -219,7 +219,7 @@ function MantineDialogDemo() {
     console.log(result);
   };
 
-  const onInputClick = async () => {
+  const onFormClick = async () => {
     const result = await dialogs.form({
       title: 'Switch user',
       content: (
@@ -244,7 +244,7 @@ function MantineDialogDemo() {
       <Button onClick={onErrorClick}>Error (Mantine)</Button>
       <Button onClick={onConfirmClick}>Confirm (Mantine)</Button>
       <Button onClick={onConfirmCriticalClick}>Confirm critical (Mantine)</Button>
-      <Button onClick={onInputClick}>Input (Mantine)</Button>
+      <Button onClick={onFormClick}>Form (Mantine)</Button>
     </>
   );
 }

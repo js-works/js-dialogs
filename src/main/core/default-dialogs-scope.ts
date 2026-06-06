@@ -37,7 +37,8 @@ export { DefaultDialogScope };
 interface ButtonConfig {
   id: Symbol;
   type: 'primary' | 'secondary' | 'danger';
-  text: TextKey;
+  text?: string | null;
+  defaultTextKey: TextKey;
   validate: boolean;
 }
 
@@ -66,56 +67,56 @@ const symbolDecline = Symbol('decline');
 const okBtn: ButtonConfig = {
   id: symbolOk,
   type: 'primary',
-  text: 'ok',
+  defaultTextKey: 'ok',
   validate: true,
 };
 
 const okBtnDanger: ButtonConfig = {
   id: symbolOk,
   type: 'danger',
-  text: 'ok',
+  defaultTextKey: 'ok',
   validate: true,
 };
 
 const confirmBtn: ButtonConfig = {
   id: symbolConfirm,
   type: 'primary',
-  text: 'ok',
+  defaultTextKey: 'ok',
   validate: true,
 };
 
 const confirmBtnDanger: ButtonConfig = {
   id: symbolConfirm,
   type: 'danger',
-  text: 'ok',
+  defaultTextKey: 'ok',
   validate: true,
 };
 
 const cancelBtn: ButtonConfig = {
   id: symbolCancel,
   type: 'secondary',
-  text: 'cancel',
+  defaultTextKey: 'cancel',
   validate: false,
 };
 
 const yesBtn: ButtonConfig = {
   id: symbolConfirm,
   type: 'primary',
-  text: 'yes',
+  defaultTextKey: 'yes',
   validate: true,
 };
 
 const yesBtnDanger: ButtonConfig = {
   id: symbolConfirm,
   type: 'danger',
-  text: 'yes',
+  defaultTextKey: 'yes',
   validate: true,
 };
 
 const noBtn: ButtonConfig = {
   id: symbolDecline,
   type: 'secondary',
-  text: 'no',
+  defaultTextKey: 'no',
   validate: false,
 };
 
@@ -271,12 +272,12 @@ class DefaultDialogScope<C> implements DialogScope<C> {
         const buttonConfig = { ...buttons[i] };
         buttons[i] = buttonConfig;
 
-        if (buttonConfig.id === symbolConfirm && buttonTexts.confirm) {
-          // TODO
-          // buttonConfig.text = buttonTexts.confirm;
-        } else if (buttonConfig.id === symbolCancel && buttonTexts.cancel) {
-          // TODO
-          // buttonConfig.text = buttonTexts.cancel;
+        if (buttons) {
+          const customButtonText = (buttonTexts as any)[buttonConfig.id.description as any];
+
+          if (customButtonText) {
+            buttonConfig.text = buttonTexts.confirm;
+          }
         }
       }
     }
@@ -366,10 +367,11 @@ class DefaultDialogScope<C> implements DialogScope<C> {
 
     for (const buttonConfig of buttons) {
       const [loadingToggle, setLoadingValue] = createToggle(); // TODO ro
+      const buttonText = buttonConfig.text ?? this.#getText(buttonConfig.defaultTextKey);
 
       const actionButton = (
         this.#adapter.renderActionButton || this.#renderDefaultActionButton.bind(this)
-      )(buttonConfig.type, buttonConfig.text, loadingToggle, async () => {
+      )(buttonConfig.type, buttonText, loadingToggle, async () => {
         setTimeout(() => setLoadingValue(true), 150);
         onButtonClicked(buttonConfig.id);
       });
