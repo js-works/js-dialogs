@@ -1,4 +1,3 @@
-import { html } from '../main/index.js';
 import { createRoot } from 'react-dom/client';
 import { Button, MantineProvider, PasswordInput, TextInput } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
@@ -8,6 +7,7 @@ import { dialogs } from './vanilla-dialogs.js';
 import './style.css';
 import '@mantine/core/styles.css';
 import { runWithOverlay } from '../main/core/overlay.js';
+import { html } from '../main/core/html.js';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
   <div id="column-1">
@@ -29,20 +29,18 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
 document.querySelector<HTMLButtonElement>('#temp')!.onclick = async () => {
   await runWithOverlay(async () => await sleep(2000));
 
-  await dialogs.confirm({
-    critical: true,
+  await dialogs.confirmCritical({
     title: 'Confirm deletion',
     content: 'Are you really sure that the file shall be deleted?',
     buttonTexts: {
       confirm: 'Delete File',
     },
-  })
+  });
 };
 
 document.querySelector<HTMLButtonElement>('#temp2')!.onclick = async () => {
   dialogs.flow(async (scope) => {
-    const confirmResult = await scope.confirm({
-      critical: true,
+    const confirmResult = await scope.confirmCritical({
       title: 'Confirm deletion',
       content: 'Are you really sure that the file should be deleted?',
       buttonTexts: {
@@ -116,8 +114,7 @@ document.querySelector<HTMLButtonElement>('#btn-confirm')!.onclick = async () =>
 };
 
 document.querySelector<HTMLButtonElement>('#btn-confirm-critical')!.onclick = async () => {
-  const result = await dialogs.confirm({
-    critical: true,
+  const result = await dialogs.confirmCritical({
     title: 'Delete customer',
     subtitle: 'Customer: #1235 - Jane Doe',
     content: 'Are you really sure that the customer shall be deleted?\nThis cannot made undone.',
@@ -131,8 +128,8 @@ document.querySelector<HTMLButtonElement>('#btn-confirm-critical')!.onclick = as
 
 document.querySelector<HTMLButtonElement>('#btn-decide')!.onclick = async () => {
   const result = await dialogs.decide({
-    title: "Question",
-    content: 'Do you want the configuration to be reset?'
+    title: 'Question',
+    content: 'Do you want the configuration to be reset?',
   });
 
   console.log(result);
@@ -210,8 +207,7 @@ function MantineDialogDemo() {
   };
 
   const onConfirmCriticalClick = async () => {
-    const result = await dialogs.confirm({
-      critical: true,
+    const result = await dialogs.confirmCritical({
       title: 'Delete customer',
       subtitle: 'Customer: #1235 - Jane Doe',
       content: 'Are you really sure that the customer shall be deleted?\nThis cannot made undone.',

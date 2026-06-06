@@ -1,10 +1,14 @@
-import { createDialogsController } from '../main/core/dialog-controller.js';
 import { Button, CloseButton } from '@mantine/core';
 import { useModals } from '@mantine/modals';
 import { createElement as h, useEffect, useState, type ReactNode } from 'react';
-import { type ActionButtonType, type DialogAdapter } from '../main/core/public-types.js';
 import { DefaultIconsPlugin } from '../main/plugins/default-icons.js';
 import type { Toggle } from '../main/core/toggles.js';
+
+import {
+  createDialogsController,
+  type ActionButtonType,
+  type InteractionAdapter,
+} from '../main/core/exports.js';
 
 export function useMantineDialogs() {
   const adapter = useMantineDialogAdapter();
@@ -19,7 +23,7 @@ export function useMantineDialogs() {
   return dialogsController;
 }
 
-function useMantineDialogAdapter(): DialogAdapter<ReactNode> {
+function useMantineDialogAdapter(): InteractionAdapter<ReactNode> {
   const modals = useModals();
   const [adapter] = useState(() => createMantineDialogAdapter(modals));
   return adapter;
@@ -27,7 +31,7 @@ function useMantineDialogAdapter(): DialogAdapter<ReactNode> {
 
 function createMantineDialogAdapter(
   modals: ReturnType<typeof useModals>
-): DialogAdapter<ReactNode> {
+): InteractionAdapter<ReactNode> {
   return {
     openDialog(data: any) {
       const slots = [] as any;
@@ -114,12 +118,9 @@ function DialogButton(props: {
     return props.loadingToggle.onChange(setLoading);
   }, [props.loadingToggle]);
 
-  useEffect(() => {
-    console.log('update');
-  });
-
   const variant =
     props.appearance === 'primary' || props.appearance === 'danger' ? 'filled' : 'default';
+
   const color = props.appearance === 'danger' ? 'red.9' : undefined;
 
   return h(

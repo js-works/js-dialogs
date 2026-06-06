@@ -17,8 +17,11 @@ const defaultDialogTexts = {
   titleWarn: 'Warning',
   titleError: 'Error',
   titleConfirm: 'Confirmation',
+  titleConfirmCritical: 'Confirmation',
   titleDecide: 'Decision',
+  titleDecideCritical: 'Decision',
   titleForm: 'Enter details',
+  titleFormCritical: 'Enter details',
 } as const;
 
 class Translator {

@@ -12,7 +12,6 @@ import type {
   ConfirmDialogResult,
   DecideDialogConfig,
   DecideDialogResult,
-  DialogAdapter,
   DialogControllerConfig,
   DialogScope,
   DialogType,
@@ -22,11 +21,12 @@ import type {
   FormDialogResult,
   InfoDialogConfig,
   InfoDialogResult,
+  InteractionAdapter,
   SuccessDialogConfig,
   SuccessDialogResult,
   WarnDialogConfig,
   WarnDialogResult,
-} from './public-types';
+} from './exports';
 
 export { DefaultDialogScope };
 
@@ -41,8 +41,7 @@ interface ButtonConfig {
   validate: boolean;
 }
 
-type DialogVariantConfig<C> = {
-  dialogVariant: string;
+type DialogConfig<C> = {
   dialogType: DialogType;
   defaultTitle: TextKey;
   config: BaseDialogConfig<C>;
@@ -126,18 +125,16 @@ const noBtn: ButtonConfig = {
 
 class DefaultDialogScope<C> implements DialogScope<C> {
   readonly #config: DialogControllerConfig;
-  readonly #adapter: DialogAdapter<C>;
+  readonly #adapter: InteractionAdapter<C>;
   #initialized = false;
   #closePrevious: (() => Promise<void>) | null = null;
   #autoCloseDialogs: boolean;
-
-  #timeout: any = null;
 
   constructor(
     closeOverlay: (() => Promise<void>) | null,
     abortSignal: AbortSignal | null,
     config: DialogControllerConfig,
-    adapter: DialogAdapter<C>
+    adapter: InteractionAdapter<C>
   ) {
     this.#autoCloseDialogs = !closeOverlay;
     this.#config = config;
@@ -159,7 +156,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     await this.#prepare();
     return this.#openDialog({
       dialogType: 'info',
-      dialogVariant: 'info',
       defaultTitle: 'titleInfo',
       config,
       buttons: [okBtn],
@@ -170,7 +166,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     await this.#prepare();
     return this.#openDialog({
       dialogType: 'success',
-      dialogVariant: 'success',
       defaultTitle: 'titleSuccess',
       config,
       buttons: [okBtn],
@@ -181,7 +176,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     await this.#prepare();
     return this.#openDialog({
       dialogType: 'warn',
-      dialogVariant: 'warn',
       defaultTitle: 'titleWarn',
       config,
       buttons: [okBtnDanger],
@@ -192,7 +186,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     await this.#prepare();
     return this.#openDialog({
       dialogType: 'error',
-      dialogVariant: 'error',
       defaultTitle: 'titleError',
       config,
       buttons: [okBtnDanger],
@@ -203,10 +196,19 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     await this.#prepare();
     return this.#openDialog({
       dialogType: 'confirm',
-      dialogVariant: config.critical ? 'confirm:critical' : 'confirm',
       defaultTitle: 'titleConfirm',
       config,
-      buttons: [config.critical ? confirmBtnDanger : confirmBtn, cancelBtn],
+      buttons: [confirmBtn, cancelBtn],
+    });
+  }
+
+  async confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
+    await this.#prepare();
+    return this.#openDialog({
+      dialogType: 'confirmCritical',
+      defaultTitle: 'titleConfirmCritical',
+      config,
+      buttons: [confirmBtnDanger, cancelBtn],
     });
   }
 
@@ -214,10 +216,19 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     await this.#prepare();
     return this.#openDialog({
       dialogType: 'decide',
-      dialogVariant: config.critical ? 'decide:critical' : 'decide',
       defaultTitle: 'titleDecide',
       config,
-      buttons: [config.critical ? yesBtnDanger : yesBtn, noBtn, cancelBtn],
+      buttons: [yesBtn, noBtn, cancelBtn],
+    });
+  }
+
+  async decideCritical(config: DecideDialogConfig<C>): Promise<DecideDialogResult> {
+    await this.#prepare();
+    return this.#openDialog({
+      dialogType: 'decideCritical',
+      defaultTitle: 'titleDecideCritical',
+      config,
+      buttons: [yesBtnDanger, noBtn, cancelBtn],
     });
   }
 
@@ -225,19 +236,27 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     await this.#prepare();
     return this.#openDialog({
       dialogType: 'form',
-      dialogVariant: config.critical ? 'input:critical' : 'input',
       defaultTitle: 'titleForm',
       config,
-      buttons: [config.critical ? confirmBtnDanger : confirmBtn, cancelBtn],
+      buttons: [confirmBtn, cancelBtn],
     });
   }
 
-  async #openDialog(dialogVariantConfig: DialogVariantConfig<C>): Promise<any> {
-    const dialogVariant = dialogVariantConfig.dialogVariant;
-    const dialogType = dialogVariantConfig.dialogType;
-    const baseConfig = dialogVariantConfig.config;
-    const defaultDialogTitle = dialogVariantConfig.defaultTitle;
-    let buttons = dialogVariantConfig.buttons;
+  async formCritical(config: FormDialogConfig<C>): Promise<FormDialogResult> {
+    await this.#prepare();
+    return this.#openDialog({
+      dialogType: 'form',
+      defaultTitle: 'titleFormCritical',
+      config,
+      buttons: [confirmBtnDanger, cancelBtn],
+    });
+  }
+
+  async #openDialog(dialogConfig: DialogConfig<C>): Promise<any> {
+    const dialogType = dialogConfig.dialogType;
+    const baseConfig = dialogConfig.config;
+    const defaultDialogTitle = dialogConfig.defaultTitle;
+    let buttons = dialogConfig.buttons;
     const customDialogTagName = CustomDialogElement.prepare();
 
     if (!this.#initialized) {
@@ -275,7 +294,9 @@ class DefaultDialogScope<C> implements DialogScope<C> {
         case 'warn':
         case 'error':
         case 'confirm':
+        case 'confirmCritical':
         case 'decide':
+        case 'decideCritical':
           setResult(
             id === symbolOk || id === symbolConfirm || id === symbolDecline
               ? { canceled: false, aborted: false, action: id.description, data: null }
@@ -283,6 +304,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
           );
           break;
         case 'form':
+        case 'formCritical':
           setResult(
             id === symbolConfirm
               ? { canceled: false, aborted: false, action: id.description, data: {} }
@@ -368,7 +390,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     const { closeDialog } = this.#adapter.openDialog!({
       id: 'dlg-' + Date.now(),
       customDialogTagName,
-      properties: { 'data-dialog-variant': dialogVariant, init },
+      properties: { 'data-dialog-type': dialogType, init },
       slotContents: slotContents,
       cancel: () => {}, // todo!!!!!!!
     });

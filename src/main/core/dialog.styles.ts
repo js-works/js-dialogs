@@ -67,18 +67,18 @@ const dialogStyles = css`
     padding: 0.25em;
   }
 
-  :host([data-dialog-variant='info']) #icon,
-  :host([data-dialog-variant='success']) #icon,
-  :host([data-dialog-variant='confirm']) #icon,
-  :host([data-dialog-variant='ask']) #icon {
+  :host([data-dialog-type='info']) #icon,
+  :host([data-dialog-type='success']) #icon,
+  :host([data-dialog-type='confirm']) #icon,
+  :host([data-dialog-type='decide']) #icon {
     color: ${theme.primaryBackgroundColor};
     background-color: color-mix(in srgb, ${theme.primaryBackgroundColor}, white 90%);
   }
 
-  :host([data-dialog-variant='warn']) #icon,
-  :host([data-dialog-variant='error']) #icon,
-  :host([data-dialog-variant='confirm:critical']) #icon,
-  :host([data-dialog-variant='ask:critical']) #icon {
+  :host([data-dialog-type='warn']) #icon,
+  :host([data-dialog-type='error']) #icon,
+  :host([data-dialog-type='confirmCritical']) #icon,
+  :host([data-dialog-type='decideCritical']) #icon {
     color: ${theme.dangerBackgroundColor};
     background-color: color-mix(in srgb, ${theme.dangerBackgroundColor}, white 90%);
   }

@@ -2,11 +2,15 @@ import { SvgContent } from './svg';
 import { CssContent } from './css';
 import type { Toggle } from './toggles';
 import type { TextKey } from './i18n';
+import { DefaultDialogsController } from './default-dialogs-controller';
+import { defaultDialogAdapter } from './default-interaction-adapter';
+
+export { createInteractionAdapter as createDialogAdapter, createDialogsController };
 
 export type {
   ActionButtonType,
   BaseDialogConfig,
-  DialogAdapter,
+  InteractionAdapter,
   DialogsController,
   DialogControllerConfig,
   DialogScope,
@@ -33,13 +37,27 @@ export type {
   FormDialogResult,
 };
 
+// ===================================================================
+// Types
+// ===================================================================
+
 type Renderable<C> = C | string | number | null | undefined;
 
-type DialogType = 'info' | 'success' | 'warn' | 'error' | 'confirm' | 'decide' | 'form';
+type DialogType =
+  | 'info'
+  | 'success'
+  | 'warn'
+  | 'error'
+  | 'confirm'
+  | 'confirmCritical'
+  | 'decide'
+  | 'decideCritical'
+  | 'form'
+  | 'formCritical';
 
 type ActionButtonType = 'primary' | 'secondary' | 'danger';
 
-interface DialogAdapter<C> {
+interface InteractionAdapter<C> {
   openDialog?(params: {
     id: string;
     customDialogTagName: string;
@@ -96,18 +114,9 @@ interface InfoDialogConfig<C> extends BaseDialogConfig<C> {}
 interface SuccessDialogConfig<C> extends BaseDialogConfig<C> {}
 interface WarnDialogConfig<C> extends BaseDialogConfig<C> {}
 interface ErrorDialogConfig<C> extends BaseDialogConfig<C> {}
-
-interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {
-  critical?: boolean;
-}
-
-interface DecideDialogConfig<C> extends BaseDialogConfig<C> {
-  critical?: boolean;
-}
-
-interface FormDialogConfig<C> extends BaseDialogConfig<C> {
-  critical?: boolean;
-}
+interface ConfirmDialogConfig<C> extends BaseDialogConfig<C> {}
+interface DecideDialogConfig<C> extends BaseDialogConfig<C> {}
+interface FormDialogConfig<C> extends BaseDialogConfig<C> {}
 
 interface DialogsFunctions<C> {
   info(config: InfoDialogConfig<C>): Promise<InfoDialogResult>;
@@ -115,8 +124,11 @@ interface DialogsFunctions<C> {
   warn(config: WarnDialogConfig<C>): Promise<WarnDialogResult>;
   error(config: ErrorDialogConfig<C>): Promise<ErrorDialogResult>;
   confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult>;
+  confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult>;
   decide(config: DecideDialogConfig<C>): Promise<DecideDialogResult>;
+  decideCritical(config: DecideDialogConfig<C>): Promise<DecideDialogResult>;
   form(config: FormDialogConfig<C>): Promise<FormDialogResult>;
+  formCritical(config: FormDialogConfig<C>): Promise<FormDialogResult>;
 }
 
 interface DialogsController<C> extends DialogsFunctions<C> {
@@ -143,3 +155,34 @@ type ErrorDialogResult = DialogResult<'ok'>;
 type ConfirmDialogResult = DialogResult<'confirm'>;
 type DecideDialogResult = DialogResult<'confirm' | 'decline'>;
 type FormDialogResult = DialogResult<'confirm', FormData>;
+
+// ===================================================================
+// Functions
+// ===================================================================
+
+function createInteractionAdapter<C>(params: any): InteractionAdapter<C> {
+  // TODO - no any
+  return Object.freeze({ ...defaultDialogAdapter, ...params });
+}
+
+function createDialogsController(params?: { plugins?: Plugin[] }): DialogsController<Node>;
+
+function createDialogsController<C>(params: {
+  adapter: InteractionAdapter<C>;
+  plugins?: Plugin[];
+}): DialogsController<C>;
+
+function createDialogsController(params?: any): DialogsController<any> {
+  // TODO - no any
+  const adapter = params?.adapter || defaultDialogAdapter;
+
+  let mappedConfig: DialogControllerConfig = params?.config || {};
+  const plugins = params?.plugins || [];
+
+  for (const plugin of plugins) {
+    if (plugin.mapDialogControllerConfig)
+      mappedConfig = { ...mappedConfig, ...plugin.mapDialogControllerConfig(mappedConfig) };
+  }
+
+  return new DefaultDialogsController(mappedConfig, adapter);
+}

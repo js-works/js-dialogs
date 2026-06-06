@@ -1,10 +1,8 @@
-import { createDialogsController } from '../main/core/dialog-controller.js';
+import { createDialogsController } from '../main/index.js';
 import { DefaultIconsPlugin } from '../main/plugins/default-icons.js';
 
 export { dialogs };
 
 const dialogs = createDialogsController({
-    plugins: [new DefaultIconsPlugin()]
+  plugins: [new DefaultIconsPlugin()],
 });
-
-

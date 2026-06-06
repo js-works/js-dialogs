@@ -1,13 +1,8 @@
-import { h, html } from './html.js';
-import { css } from './css.js';
-import { svg } from './svg.js';
-
 import type {
   ConfirmDialogConfig,
   ConfirmDialogResult,
   DecideDialogConfig,
   DecideDialogResult,
-  DialogAdapter,
   DialogControllerConfig,
   DialogsController,
   DialogScope,
@@ -17,53 +12,28 @@ import type {
   FormDialogResult,
   InfoDialogConfig,
   InfoDialogResult,
-  Plugin,
+  InteractionAdapter,
   SuccessDialogConfig,
+  SuccessDialogResult,
   WarnDialogConfig,
   WarnDialogResult,
-} from './public-types.js';
+} from './exports.js';
 
 import { showOverlay } from './overlay.js';
-import { defaultDialogAdapter } from './default-dialog-adapter.js';
-import { CustomDialogElement } from './custom-dialog-element.js';
-import { DefaultDialogScope } from './default-dialog-scope.js';
+import { defaultDialogAdapter } from './default-interaction-adapter.js';
+import { DefaultDialogScope } from './default-dialogs-scope.js';
 
-export { createDialogsController, css, h, html, svg, CustomDialogElement };
-
-// ===================================================================
-// DialogController
-// ===================================================================
-
-function createDialogsController(params?: { plugins?: Plugin[] }): DialogsController<Node>;
-
-function createDialogsController<C>(params: {
-  adapter: DialogAdapter<C>;
-  plugins?: Plugin[];
-}): DialogsController<C>;
-
-function createDialogsController(params?: any): DialogsController<any> {
-  const adapter = params?.adapter || defaultDialogAdapter;
-
-  let mappedConfig: DialogControllerConfig = params?.config || {};
-  const plugins = params?.plugins || [];
-
-  for (const plugin of plugins) {
-    if (plugin.mapDialogControllerConfig)
-      mappedConfig = { ...mappedConfig, ...plugin.mapDialogControllerConfig(mappedConfig) };
-  }
-
-  return new DefaultDialogsController(mappedConfig, adapter);
-}
+export { DefaultDialogsController };
 
 class DefaultDialogsController<C> implements DialogsController<C> {
   readonly #config: DialogControllerConfig;
-  readonly #adapter: DialogAdapter<C>;
+  readonly #adapter: InteractionAdapter<C>;
 
-  constructor(config: DialogControllerConfig, adapter?: DialogAdapter<C>) {
+  constructor(config: DialogControllerConfig, adapter?: InteractionAdapter<C>) {
     this.#config = config;
 
     if (adapter) {
-      const customAdapter: DialogAdapter<C> = {
+      const customAdapter: InteractionAdapter<C> = {
         ...(defaultDialogAdapter as any),
       };
 
@@ -75,7 +45,7 @@ class DefaultDialogsController<C> implements DialogsController<C> {
 
       this.#adapter = customAdapter;
     } else {
-      this.#adapter = defaultDialogAdapter as DialogAdapter<any>;
+      this.#adapter = defaultDialogAdapter as InteractionAdapter<any>;
     }
   }
 
@@ -101,7 +71,7 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     return this.#createScope().info(config);
   }
 
-  success(config: SuccessDialogConfig<C>): Promise<InfoDialogResult> {
+  success(config: SuccessDialogConfig<C>): Promise<SuccessDialogResult> {
     return this.#createScope().success(config);
   }
 
@@ -117,12 +87,24 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     return this.#createScope().confirm(config);
   }
 
+  confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
+    return this.#createScope().confirmCritical(config);
+  }
+
   decide(config: DecideDialogConfig<C>): Promise<DecideDialogResult> {
     return this.#createScope().decide(config);
   }
 
+  decideCritical(config: DecideDialogConfig<C>): Promise<DecideDialogResult> {
+    return this.#createScope().decideCritical(config);
+  }
+
   form(config: FormDialogConfig<C>): Promise<FormDialogResult> {
     return this.#createScope().form(config);
+  }
+
+  formCritical(config: FormDialogConfig<C>): Promise<FormDialogResult> {
+    return this.#createScope().formCritical(config);
   }
 
   #createScope() {

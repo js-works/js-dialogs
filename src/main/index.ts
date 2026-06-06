@@ -1,2 +1,2 @@
-export { html } from "./core/html.js"
-export { createDialogsController } from "./core/dialog-controller.js"
+export * from './core/exports.js';
+export type * from './core/exports.js';

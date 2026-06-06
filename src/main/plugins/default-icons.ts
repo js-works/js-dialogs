@@ -1,5 +1,5 @@
 import { svg, SvgContent } from '../core/svg.js';
-import type { Plugin, DialogType, DialogControllerConfig } from '../core/public-types.js';
+import type { Plugin, DialogType, DialogControllerConfig } from '../core/exports.js';
 
 export { DefaultIconsPlugin };
 
@@ -24,16 +24,16 @@ class DefaultIconsPlugin implements Plugin {
       case 'error':
         return errorIcon;
       case 'confirm':
+      case 'confirmCritical':
         return confirmIcon;
-      case 'ask':
+      case 'decide':
+      case 'decideCritical':
         return confirmIcon;
       default:
         return null;
     }
   }
 }
-
-//
 
 const infoIcon2 = svg`
   <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16">

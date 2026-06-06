@@ -1,10 +1,10 @@
 import type { CustomDialogElement } from './custom-dialog-element';
 import { h, HtmlContent, toHtmlElement } from './html';
-import type { DialogAdapter, Renderable } from './public-types';
+import type { InteractionAdapter, Renderable } from './exports';
 
 export { defaultDialogAdapter };
 
-const defaultDialogAdapter: DialogAdapter<HTMLElement> = {
+const defaultDialogAdapter: InteractionAdapter<HTMLElement> = {
   openDialog({
     //id,
     customDialogTagName,
