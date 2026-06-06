@@ -4,7 +4,7 @@ import type { InteractionAdapter, Renderable } from './exports';
 
 export { defaultDialogAdapter };
 
-const defaultDialogAdapter: InteractionAdapter<HTMLElement> = {
+const defaultDialogAdapter: InteractionAdapter<Node> = {
   openDialog({
     //id,
     customDialogTagName,
@@ -21,6 +21,7 @@ const defaultDialogAdapter: InteractionAdapter<HTMLElement> = {
     });
 
     for (const [slotName, slotContent] of slotContents) {
+      console.log(slotName, slotContent);
       const nodes = convertToNodes(slotContent);
       customDialogElem.shadowRoot!.querySelector(`slot[name="${slotName}"]`)!.append(...nodes);
     }
@@ -35,17 +36,17 @@ const defaultDialogAdapter: InteractionAdapter<HTMLElement> = {
 
   renderForm(children, onSubmit) {
     const form = document.createElement('form');
-    form.append(children);
+    convertToNodes(children).forEach((child) => form.append(child));
     form.onsubmit = onSubmit;
     return form;
   },
 };
 
-function convertToNodes(content: Renderable<HTMLElement>): Node[] {
+function convertToNodes(content: Renderable<Node>): Node[] {
   if (content === undefined || content === null) {
     return [document.createTextNode('')];
   } else if (typeof content === 'string') {
-    const lines = content.split(/\r?\n/);
+    const lines = content.split(/\r\n|[\r\n]/);
 
     return lines.length === 1
       ? [document.createTextNode(lines[0])]

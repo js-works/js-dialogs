@@ -1,6 +1,6 @@
 import { Button, CloseButton } from '@mantine/core';
 import { useModals } from '@mantine/modals';
-import { createElement as h, useEffect, useState, type ReactNode } from 'react';
+import { createElement as h, useEffect, useState, Fragment, type ReactNode } from 'react';
 import { DefaultIconsPlugin } from '../main/plugins/default-icons.js';
 import type { Toggle } from '../main/core/toggles.js';
 
@@ -37,7 +37,9 @@ function createMantineDialogAdapter(
       const slots = [] as any;
 
       data.slotContents.forEach((entry: any, idx: number) => {
-        slots.push(h('div', { slot: entry[0], key: `${entry[0]}-${idx}` }, entry[1]));
+        slots.push(
+          h('div', { slot: entry[0], key: `${entry[0]}-${idx}` }, convertToReactNode(entry[1]))
+        );
       });
 
       let setInnerContent: any;
@@ -93,7 +95,7 @@ function createMantineDialogAdapter(
     },
 
     renderForm(children, onSubmit) {
-      return h('form', { onSubmit }, children);
+      return h('form', { onSubmit }, convertToReactNode(children));
     },
 
     renderCloseButton(text: any, onClick: any) {
@@ -133,4 +135,18 @@ function DialogButton(props: {
     },
     props.text
   );
+}
+
+function convertToReactNode(content: ReactNode): ReactNode {
+  if (typeof content === 'string') {
+    const lines = content.split(/\r?\n/);
+    console.log(lines);
+    if (lines.length === 1) {
+      return content;
+    }
+
+    return h(Fragment, null, ...lines.map((line) => h('div', null, line)));
+  }
+
+  return content;
 }

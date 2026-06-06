@@ -196,8 +196,13 @@ function MantineDialogDemo() {
   const onConfirmClick = async () => {
     const result = await dialogs.confirm({
       title: 'Delete customer',
-      content:
-        'Are you really sure that customer #1235 (Jane Doe) shall be deleted?\nThis cannot made undone.',
+      content: (
+        <div>
+          <div>Are you really sure that customer #1235 (Jane Doe) shall be deleted?</div>
+          <br />
+          <em>Warning:</em> This cannot made undone.
+        </div>
+      ),
       buttonTexts: {
         confirm: 'Delete',
       },
