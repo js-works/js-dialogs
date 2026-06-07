@@ -5,13 +5,7 @@ import type { InteractionAdapter, Renderable } from './exports';
 export { defaultDialogAdapter };
 
 const defaultDialogAdapter: InteractionAdapter<Node> = {
-  openDialog({
-    //id,
-    customDialogTagName,
-    slotContents,
-    properties,
-    cancel,
-  }) {
+  openDialog({ customDialogTagName, properties, styles, slotContents, cancel }) {
     const targetContainer = document.body;
     const customDialogElem: CustomDialogElement = h(customDialogTagName, properties);
     targetContainer.append(customDialogElem);
@@ -20,10 +14,18 @@ const defaultDialogAdapter: InteractionAdapter<Node> = {
       cancel();
     });
 
+    if (styles) {
+      const styleElem = document.createElement('style');
+      styleElem.innerText = styles;
+      customDialogElem.append(styleElem);
+    }
+
     for (const [slotName, slotContent] of slotContents) {
-      console.log(slotName, slotContent);
       const nodes = convertToNodes(slotContent);
-      customDialogElem.shadowRoot!.querySelector(`slot[name="${slotName}"]`)!.append(...nodes);
+      const divElem = document.createElement('div');
+      divElem.slot = slotName;
+      divElem.append(...nodes);
+      customDialogElem.append(divElem);
     }
 
     document.body.append(customDialogElem);

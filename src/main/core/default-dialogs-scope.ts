@@ -154,7 +154,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   }
 
   async info(config: InfoDialogConfig<C>): Promise<InfoDialogResult> {
-    await this.#prepare();
     return this.#openDialog({
       dialogType: 'info',
       defaultTitle: 'titleInfo',
@@ -164,7 +163,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   }
 
   async success(config: SuccessDialogConfig<C>): Promise<SuccessDialogResult> {
-    await this.#prepare();
     return this.#openDialog({
       dialogType: 'success',
       defaultTitle: 'titleSuccess',
@@ -174,7 +172,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   }
 
   async warn(config: WarnDialogConfig<C>): Promise<WarnDialogResult> {
-    await this.#prepare();
     return this.#openDialog({
       dialogType: 'warn',
       defaultTitle: 'titleWarn',
@@ -184,7 +181,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   }
 
   async error(config: ErrorDialogConfig<C>): Promise<ErrorDialogResult> {
-    await this.#prepare();
     return this.#openDialog({
       dialogType: 'error',
       defaultTitle: 'titleError',
@@ -194,7 +190,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   }
 
   async confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
-    await this.#prepare();
     return this.#openDialog({
       dialogType: 'confirm',
       defaultTitle: 'titleConfirm',
@@ -204,7 +199,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   }
 
   async confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
-    await this.#prepare();
     return this.#openDialog({
       dialogType: 'confirmCritical',
       defaultTitle: 'titleConfirmCritical',
@@ -214,7 +208,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   }
 
   async decide(config: DecideDialogConfig<C>): Promise<DecideDialogResult> {
-    await this.#prepare();
     return this.#openDialog({
       dialogType: 'decide',
       defaultTitle: 'titleDecide',
@@ -224,7 +217,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   }
 
   async decideCritical(config: DecideDialogConfig<C>): Promise<DecideDialogResult> {
-    await this.#prepare();
     return this.#openDialog({
       dialogType: 'decideCritical',
       defaultTitle: 'titleDecideCritical',
@@ -234,7 +226,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   }
 
   async form(config: FormDialogConfig<C>): Promise<FormDialogResult> {
-    await this.#prepare();
     return this.#openDialog({
       dialogType: 'form',
       defaultTitle: 'titleForm',
@@ -244,7 +235,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   }
 
   async formCritical(config: FormDialogConfig<C>): Promise<FormDialogResult> {
-    await this.#prepare();
     return this.#openDialog({
       dialogType: 'form',
       defaultTitle: 'titleFormCritical',
@@ -253,102 +243,60 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     });
   }
 
-  async #openDialog(dialogConfig: DialogConfig<C>): Promise<any> {
-    const dialogType = dialogConfig.dialogType;
-    const baseConfig = dialogConfig.config;
-    const defaultDialogTitle = dialogConfig.defaultTitle;
-    let buttons = dialogConfig.buttons;
+  async #openDialog(config: DialogConfig<C>): Promise<any> {
+    let resolve: (value: any) => void;
+    const dialogId = 'internal-dialog-' + Date.now();
+    const buttons = this.#getDialogButtons(config);
     const customDialogTagName = CustomDialogElement.prepare();
 
     if (!this.#initialized) {
       this.#initialize(customDialogTagName);
     }
 
-    const buttonTexts = baseConfig.buttonTexts || null;
-
-    if (buttonTexts) {
-      buttons = [...buttons];
-      for (let i = 0; i < buttons.length; ++i) {
-        const buttonConfig = { ...buttons[i] };
-        buttons[i] = buttonConfig;
-
-        if (buttons) {
-          const customButtonText = (buttonTexts as any)[buttonConfig.id.description as any];
-
-          if (customButtonText) {
-            buttonConfig.text = buttonTexts.confirm;
-          }
-        }
-      }
-    }
-
-    let setResult: any;
-
-    const resultPromise = new Promise((resolve) => {
-      setResult = resolve;
-    });
-
-    const finish = (id: Symbol) => {
-      switch (dialogType) {
-        case 'info':
-        case 'success':
-        case 'warn':
-        case 'error':
-        case 'confirm':
-        case 'confirmCritical':
-        case 'decide':
-        case 'decideCritical':
-          setResult(
-            id === symbolOk || id === symbolConfirm || id === symbolDecline
-              ? { canceled: false, aborted: false, action: id.description, data: null }
-              : { canceled: true, aborted: false }
-          );
-          break;
-        case 'form':
-        case 'formCritical':
-          setResult(
-            id === symbolConfirm
-              ? { canceled: false, aborted: false, action: id.description, data: {} }
-              : { canceled: true, aborted: false }
-          );
-          break;
-      }
-    };
+    await this.#closePreviousIfExisting();
 
     const onButtonClicked = async (id: Symbol) => {
+      // xxx // TODO
+      const form = document.querySelector<HTMLFormElement>(`#${dialogId} > [slot=content] > form`);
+      form?.requestSubmit();
+      const valid = form?.reportValidity() ?? true;
+
+      if (!valid) {
+        await this.#closePrevious?.();
+        this.#closePrevious = null;
+        return;
+      }
+
       if (this.#autoCloseDialogs) {
         await closeDialog();
       } else {
         this.#closePrevious = closeDialog;
       }
 
-      finish(id);
-    };
-
-    const cancel = async (id: Symbol) => {
-      await closeDialog();
-      finish(symbolCancel);
+      this.#finish(id, config.dialogType, resolve);
     };
 
     const slotContents: any = [];
     const internalSlotContents: any = [];
 
-    const icon = this.#config.getDialogIcon ? this.#config.getDialogIcon(dialogType) || null : null;
+    const icon = this.#config.getDialogIcon
+      ? this.#config.getDialogIcon(config.dialogType) || null
+      : null;
 
     if (icon) {
       internalSlotContents.push(['dialog-icon', html.raw(icon.getSvgText())]);
     }
 
-    const title = baseConfig.title ?? this.#getText(defaultDialogTitle);
+    const title = config.config.title ?? this.#getText(config.defaultTitle);
     slotContents.push(['title', title]);
 
     for (const slot of ['subtitle', 'intro', 'content', 'outro']) {
-      let children = (baseConfig as any)[slot];
+      let children = (config.config as any)[slot];
 
-      // TODO!!!!!!
-      if (slot === 'content' && this.#adapter.renderForm) {
-        children = this.#adapter.renderForm?.(children, () => {
-          alert('TODO');
+      if (slot === 'content') {
+        children = this.#adapter.renderForm(children, (ev) => {
+          ev.preventDefault();
+          alert('TODO'); // TODO
         });
       }
 
@@ -390,19 +338,23 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     };
 
     const { closeDialog } = this.#adapter.openDialog!({
-      id: 'dlg-' + Date.now(),
+      id: dialogId,
+      styles: this.#getStyles(dialogId, config),
       customDialogTagName,
-      properties: { 'data-dialog-type': dialogType, init },
+      properties: { id: dialogId, 'data-dialog-type': config.dialogType, init },
       slotContents: slotContents,
-      cancel: () => {}, // todo!!!!!!!
+      cancel: () => {}, // TODO!!!!!!!
     });
 
-    return resultPromise;
+    return new Promise((res) => {
+      resolve = res;
+    });
   }
 
   #initialize(tagName: string) {
     const styles = this.#adapter.getStyles?.(tagName) || null;
 
+    // TODO - only one time
     if (styles) {
       const styleSheet = new CSSStyleSheet();
       styleSheet.replaceSync(styles.getCssText());
@@ -412,7 +364,92 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     this.#initialized = true;
   }
 
-  async #prepare() {
+  #getStyles(dialogId: string, dialogConfig: DialogConfig<C>): string | null {
+    let ret: string | null = null;
+    const s = dialogConfig.config.styles;
+
+    if (!s || typeof s === 'string') {
+      ret = s || null;
+    } else if ('getCssText' in s) {
+      ret = s.getCssText();
+    } else {
+      ret = s?.toString();
+    }
+
+    return s
+      ? `
+      #${dialogId} {
+        ${ret} 
+      }
+    `
+      : null;
+  }
+
+  #getDialogButtons(dialogConfig: DialogConfig<C>) {
+    const buttonTexts = dialogConfig.config.buttonTexts;
+
+    if (!buttonTexts) {
+      return dialogConfig.buttons;
+    }
+
+    const buttons = [...dialogConfig.buttons];
+
+    for (let i = 0; i < buttons.length; ++i) {
+      const buttonConfig = { ...buttons[i] };
+      buttons[i] = buttonConfig;
+
+      if (buttons) {
+        const customButtonText = (buttonTexts as any)[buttonConfig.id.description as any];
+
+        if (customButtonText) {
+          buttonConfig.text = buttonTexts.confirm;
+        }
+      }
+    }
+
+    return buttons;
+  }
+
+  #finish(id: Symbol, dialogType: DialogType, resolve: (value: any) => void) {
+    const result = Object.create(null);
+
+    switch (dialogType) {
+      case 'info':
+      case 'success':
+      case 'warn':
+      case 'error':
+      case 'confirm':
+      case 'confirmCritical':
+      case 'decide':
+      case 'decideCritical':
+        resolve(
+          id === symbolOk || id === symbolConfirm || id === symbolDecline
+            ? Object.assign(result, {
+                canceled: false,
+                aborted: false,
+                action: id.description,
+                data: null,
+              })
+            : Object.assign(result, { canceled: true, aborted: false })
+        );
+        break;
+      case 'form':
+      case 'formCritical':
+        resolve(
+          id === symbolConfirm
+            ? Object.assign(result, {
+                canceled: false,
+                aborted: false,
+                action: id.description,
+                data: {},
+              })
+            : Object.assign(result, { canceled: true, aborted: false })
+        );
+        break;
+    }
+  }
+
+  async #closePreviousIfExisting() {
     if (this.#closePrevious) {
       try {
         await this.#closePrevious();
@@ -424,7 +461,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
 
   #getText(textKey: TextKey) {
     if (this.#config.getText) {
-      return (this, this.#config.getText(textKey));
+      return this.#config.getText(textKey);
     }
 
     return defaultDialogTexts[textKey];

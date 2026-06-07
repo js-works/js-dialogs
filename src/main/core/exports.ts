@@ -61,6 +61,7 @@ interface InteractionAdapter<C> {
   openDialog?(params: {
     id: string;
     customDialogTagName: string;
+    styles: string | null;
     slotContents: [string, Renderable<C>][];
     properties: Record<string, unknown>;
     cancel(): void;
@@ -101,6 +102,7 @@ interface BaseDialogConfig<C> {
   intro?: Renderable<C>;
   content?: Renderable<C>;
   outro?: Renderable<C>;
+  styles?: CSSStyleSheet | CssContent | string | null;
 
   buttonTexts?: {
     confirm?: string;

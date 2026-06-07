@@ -33,10 +33,10 @@ function createMantineDialogAdapter(
   modals: ReturnType<typeof useModals>
 ): InteractionAdapter<ReactNode> {
   return {
-    openDialog(data: any) {
+    openDialog(params) {
       const slots = [] as any;
 
-      data.slotContents.forEach((entry: any, idx: number) => {
+      params.slotContents.forEach((entry: any, idx: number) => {
         slots.push(
           h('div', { slot: entry[0], key: `${entry[0]}-${idx}` }, convertToReactNode(entry[1]))
         );
@@ -47,7 +47,7 @@ function createMantineDialogAdapter(
       function DialogContent() {
         let content: any;
         [content, setInnerContent] = useState(() =>
-          h(data.customDialogTagName, { useNativeDialog: false, ...data.properties }, slots)
+          h(params.customDialogTagName, { useNativeDialog: false, ...params.properties }, slots)
         );
 
         return h(
@@ -56,14 +56,16 @@ function createMantineDialogAdapter(
           h(
             'style',
             null,
-            `.${data.id} > .mantine-Modal-inner >  .mantine-Modal-content > .mantine-Modal-body { padding: 0; }`
+            `.${params.id} > .mantine-Modal-inner >  .mantine-Modal-content > .mantine-Modal-body { padding: 0; }
+            `,
+            params.styles
           ),
           content
         );
       }
 
       const modalId = modals.openModal({
-        className: data.id,
+        className: params.id,
         withCloseButton: false,
         children: h(DialogContent),
       });
@@ -76,12 +78,14 @@ function createMantineDialogAdapter(
             slots.push(h('div', { slot: entry[0], key: `${entry[0]}-${idx}` }, entry[1]));
           });
 
-          setContent(h(data.customDialogTagName, { useNativeDialog: false, ...properties }, slots));
+          setContent(
+            h(params.customDialogTagName, { useNativeDialog: false, ...properties }, slots)
+          );
         },
 
         closeDialog: () =>
           new Promise((resolve) => {
-            const dlg = document.querySelector(`.${data.id} > .mantine-Overlay-root`)!;
+            const dlg = document.querySelector(`.${params.id} > .mantine-Overlay-root`)!;
 
             dlg.addEventListener('transitionend', (ev: any) => {
               if (ev.target === dlg) {
@@ -140,7 +144,7 @@ function DialogButton(props: {
 function convertToReactNode(content: ReactNode): ReactNode {
   if (typeof content === 'string') {
     const lines = content.split(/\r?\n/);
-    console.log(lines);
+
     if (lines.length === 1) {
       return content;
     }

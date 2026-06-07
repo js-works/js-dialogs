@@ -64,7 +64,7 @@ const dialogStyles = css`
     aspect-ratio: 1 / 1;
     border-radius: 50%;
     font-size: 150%;
-    padding: 0.15em;
+    padding: 0.175em;
   }
 
   :host([data-dialog-type='info']) #icon,

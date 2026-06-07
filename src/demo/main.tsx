@@ -7,7 +7,8 @@ import { dialogs } from './vanilla-dialogs.js';
 import './style.css';
 import '@mantine/core/styles.css';
 import { runWithOverlay } from '../main/core/overlay.js';
-import { html } from '../main/core/html.js';
+import { html, toHtmlElement } from '../main/core/html.js';
+import { css } from '../main/core/css.js';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = html`
   <div id="column-1">
@@ -138,7 +139,47 @@ document.querySelector<HTMLButtonElement>('#btn-decide')!.onclick = async () => 
 document.querySelector<HTMLButtonElement>('#btn-form')!.onclick = async () => {
   const result = await dialogs.form({
     title: 'Delete customer',
-    content: 'xxx',
+    content: toHtmlElement(html`
+      <div>
+        <label>
+          Username
+          <div>
+            <input name="username" required autofocus>
+          </div>
+        </label>
+        <label>
+          Password
+          <div>
+            <input type="password" name="password" required>
+          </div>
+        </label>
+      </div>
+    `.asString()),
+    styles: css`
+      label {
+        display: block;
+        font-weight: 600;
+      }
+
+      input {
+        outline: none;
+        border: 1px solid #555;
+        width: 100%;
+        margin-bottom: 0.5em;
+        font-weight: normal;
+        box-sizing: border-box;
+        height: 2em;
+        border-radius: 2px;
+
+        &:user-invalid {
+          border: 1px solid red;
+          
+          &:focus {
+            border: 3px solid red;
+          }
+        }
+      }
+    `,
     buttonTexts: {
       confirm: 'Delete',
     },
