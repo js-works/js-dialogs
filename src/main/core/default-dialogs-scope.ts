@@ -27,6 +27,7 @@ import type {
   WarnDialogConfig,
   WarnDialogResult,
 } from './exports';
+import { ExtendedFormData } from './extended-form-data';
 
 export { DefaultDialogScope };
 
@@ -47,6 +48,7 @@ type DialogConfig<C> = {
   defaultTitle: TextKey;
   config: BaseDialogConfig<C>;
   buttons: ButtonConfig[];
+  allowsForm: boolean;
 };
 
 // ===================================================================
@@ -153,93 +155,103 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     });
   }
 
-  async info(config: InfoDialogConfig<C>): Promise<InfoDialogResult> {
+  info(config: InfoDialogConfig<C>): Promise<InfoDialogResult> {
     return this.#openDialog({
       dialogType: 'info',
       defaultTitle: 'titleInfo',
       config,
       buttons: [okBtn],
+      allowsForm: false,
     });
   }
 
-  async success(config: SuccessDialogConfig<C>): Promise<SuccessDialogResult> {
+  success(config: SuccessDialogConfig<C>): Promise<SuccessDialogResult> {
     return this.#openDialog({
       dialogType: 'success',
       defaultTitle: 'titleSuccess',
       config,
       buttons: [okBtn],
+      allowsForm: false,
     });
   }
 
-  async warn(config: WarnDialogConfig<C>): Promise<WarnDialogResult> {
+  warn(config: WarnDialogConfig<C>): Promise<WarnDialogResult> {
     return this.#openDialog({
       dialogType: 'warn',
       defaultTitle: 'titleWarn',
       config,
       buttons: [okBtnDanger],
+      allowsForm: false,
     });
   }
 
-  async error(config: ErrorDialogConfig<C>): Promise<ErrorDialogResult> {
+  error(config: ErrorDialogConfig<C>): Promise<ErrorDialogResult> {
     return this.#openDialog({
       dialogType: 'error',
       defaultTitle: 'titleError',
       config,
       buttons: [okBtnDanger],
+      allowsForm: false,
     });
   }
 
-  async confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
+  confirm(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
     return this.#openDialog({
       dialogType: 'confirm',
       defaultTitle: 'titleConfirm',
       config,
       buttons: [confirmBtn, cancelBtn],
+      allowsForm: true,
     });
   }
 
-  async confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
+  confirmCritical(config: ConfirmDialogConfig<C>): Promise<ConfirmDialogResult> {
     return this.#openDialog({
       dialogType: 'confirmCritical',
       defaultTitle: 'titleConfirmCritical',
       config,
       buttons: [confirmBtnDanger, cancelBtn],
+      allowsForm: true,
     });
   }
 
-  async decide(config: DecideDialogConfig<C>): Promise<DecideDialogResult> {
+  decide(config: DecideDialogConfig<C>): Promise<DecideDialogResult> {
     return this.#openDialog({
       dialogType: 'decide',
       defaultTitle: 'titleDecide',
       config,
       buttons: [yesBtn, noBtn, cancelBtn],
+      allowsForm: true,
     });
   }
 
-  async decideCritical(config: DecideDialogConfig<C>): Promise<DecideDialogResult> {
+  decideCritical(config: DecideDialogConfig<C>): Promise<DecideDialogResult> {
     return this.#openDialog({
       dialogType: 'decideCritical',
       defaultTitle: 'titleDecideCritical',
       config,
       buttons: [yesBtnDanger, noBtn, cancelBtn],
+      allowsForm: true,
     });
   }
 
-  async form(config: FormDialogConfig<C>): Promise<FormDialogResult> {
+  form(config: FormDialogConfig<C>): Promise<FormDialogResult> {
     return this.#openDialog({
       dialogType: 'form',
       defaultTitle: 'titleForm',
       config,
       buttons: [confirmBtn, cancelBtn],
+      allowsForm: true,
     });
   }
 
-  async formCritical(config: FormDialogConfig<C>): Promise<FormDialogResult> {
+  formCritical(config: FormDialogConfig<C>): Promise<FormDialogResult> {
     return this.#openDialog({
       dialogType: 'form',
       defaultTitle: 'titleFormCritical',
       config,
       buttons: [confirmBtnDanger, cancelBtn],
+      allowsForm: true,
     });
   }
 
@@ -255,16 +267,19 @@ class DefaultDialogScope<C> implements DialogScope<C> {
 
     await this.#closePreviousIfExisting();
 
-    const onButtonClicked = async (id: Symbol) => {
-      // xxx // TODO
-      const form = document.querySelector<HTMLFormElement>(`#${dialogId} > [slot=content] > form`);
-      form?.requestSubmit();
-      const valid = form?.reportValidity() ?? true;
+    const onButtonClicked = async (buttonConfig: ButtonConfig) => {
+      let form: HTMLFormElement | null = null;
 
-      if (!valid) {
-        await this.#closePrevious?.();
-        this.#closePrevious = null;
-        return;
+      if (config.allowsForm && buttonConfig.validate) {
+        form = document.querySelector<HTMLFormElement>(`#${dialogId} > [slot=content] > form`);
+        form?.requestSubmit();
+        const valid = form?.reportValidity() ?? true;
+
+        if (!valid) {
+          await this.#closePrevious?.();
+          this.#closePrevious = null;
+          return;
+        }
       }
 
       if (this.#autoCloseDialogs) {
@@ -273,7 +288,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
         this.#closePrevious = closeDialog;
       }
 
-      this.#finish(id, config.dialogType, resolve);
+      this.#finish(buttonConfig.id, config.dialogType, form, resolve);
     };
 
     const slotContents: any = [];
@@ -296,7 +311,6 @@ class DefaultDialogScope<C> implements DialogScope<C> {
       if (slot === 'content') {
         children = this.#adapter.renderForm(children, (ev) => {
           ev.preventDefault();
-          alert('TODO'); // TODO
         });
       }
 
@@ -305,7 +319,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
 
     const closeButton = (
       this.#adapter.renderCloseButton || this.#renderDefaultCloseButton.bind(this)
-    )('Close', () => onButtonClicked(symbolCancel));
+    )('Close', () => onButtonClicked(cancelBtn));
 
     if (this.#adapter.renderCloseButton) {
       slotContents.push(['close-button', closeButton]);
@@ -320,8 +334,9 @@ class DefaultDialogScope<C> implements DialogScope<C> {
       const actionButton = (
         this.#adapter.renderActionButton || this.#renderDefaultActionButton.bind(this)
       )(buttonConfig.type, buttonText, loadingToggle, async () => {
-        setTimeout(() => setLoadingValue(true), 150);
-        onButtonClicked(buttonConfig.id);
+        const timeout = setTimeout(() => setLoadingValue(true), 150);
+        this.#closePrevious = async () => clearTimeout(timeout);
+        onButtonClicked(buttonConfig);
       });
 
       if (this.#adapter.renderActionButton) {
@@ -410,8 +425,14 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     return buttons;
   }
 
-  #finish(id: Symbol, dialogType: DialogType, resolve: (value: any) => void) {
+  #finish(
+    id: Symbol,
+    dialogType: DialogType,
+    form: HTMLFormElement | null,
+    resolve: (value: any) => void
+  ) {
     const result = Object.create(null);
+    const data = form ? new ExtendedFormData(form) : null;
 
     switch (dialogType) {
       case 'info':
@@ -441,7 +462,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
                 canceled: false,
                 aborted: false,
                 action: id.description,
-                data: {},
+                data,
               })
             : Object.assign(result, { canceled: true, aborted: false })
         );

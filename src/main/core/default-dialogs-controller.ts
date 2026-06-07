@@ -51,7 +51,6 @@ class DefaultDialogsController<C> implements DialogsController<C> {
 
   async flow<T>(action: (scope: DialogScope<C>) => Promise<T>): Promise<T> {
     const closeOverlay = showOverlay();
-
     const abortController = new AbortController();
     const scope = new DefaultDialogScope(
       () => closeOverlay(true),

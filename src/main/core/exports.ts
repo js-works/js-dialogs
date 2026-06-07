@@ -4,6 +4,7 @@ import type { Toggle } from './toggles';
 import type { TextKey } from './i18n';
 import { DefaultDialogsController } from './default-dialogs-controller';
 import { defaultDialogAdapter } from './default-interaction-adapter';
+import type { ExtendedFormData } from './extended-form-data';
 
 export { createInteractionAdapter as createDialogAdapter, createDialogsController };
 
@@ -154,7 +155,7 @@ type WarnDialogResult = DialogResult<'ok'>;
 type ErrorDialogResult = DialogResult<'ok'>;
 type ConfirmDialogResult = DialogResult<'confirm'>;
 type DecideDialogResult = DialogResult<'confirm' | 'decline'>;
-type FormDialogResult = DialogResult<'confirm', FormData>;
+type FormDialogResult = DialogResult<'confirm', ExtendedFormData>;
 
 // ===================================================================
 // Functions

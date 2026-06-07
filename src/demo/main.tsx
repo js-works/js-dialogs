@@ -137,7 +137,8 @@ document.querySelector<HTMLButtonElement>('#btn-decide')!.onclick = async () => 
 };
 
 document.querySelector<HTMLButtonElement>('#btn-form')!.onclick = async () => {
-  const result = await dialogs.form({
+  dialogs.flow(async scope => {
+  const result = await scope.form({
     title: 'Delete customer',
     content: toHtmlElement(html`
       <div>
@@ -185,7 +186,18 @@ document.querySelector<HTMLButtonElement>('#btn-form')!.onclick = async () => {
     },
   });
 
+
   console.log(result);
+
+  if (!result.canceled) {
+    console.log(result.data.toRecord())
+  }
+
+  if (result.canceled) {
+    return;
+  }
+  await sleep(2000)
+})
 };
 
 // === React /Mantine ================================================
@@ -266,21 +278,38 @@ function MantineDialogDemo() {
   };
 
   const onFormClick = async () => {
-    const result = await dialogs.form({
-      title: 'Switch user',
+    await dialogs.flow(async scope => {
+
+    await sleep(2000);
+    const userData: any = { 
+      userNumber: 123,
+      firstName: "Jane",
+      lastName: "Doe",
+      city: "New York"
+    };
+
+    const result = await scope.form({
+      title: 'Edit user',
       content: (
         <>
-          <TextInput label="Username" name="username" required />
-          <PasswordInput label="Pasword" name="password" required />
+          <TextInput label="User no." name="userNumber" value={userData.userNumber} readOnly required/>
+          <TextInput label="First name" name="firstName" defaultValue={userData.firstName} required />
+          <TextInput label="Last name" name="lastName" defaultValue={userData.lastName} required />
         </>
       ),
       buttonTexts: {
-        confirm: 'Switch',
+        confirm: 'Save',
       },
     });
-
+    
     console.log(result);
-  };
+
+    if (!result.canceled) {
+      console.log(result.data.toRecord())
+    }
+
+    await sleep(2000);
+  })};
 
   return (
     <>
