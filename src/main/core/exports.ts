@@ -75,7 +75,7 @@ interface InteractionAdapter<C> {
   };
 
   renderForm(children: C, onSubmit: (ev: SubmitEvent) => void): C;
-  renderSpinner?(): Renderable<C>;
+  renderSpinner(): Renderable<C>;
   renderCloseButton?(text: string, onClick: () => void): Renderable<C>;
 
   renderActionButton?(

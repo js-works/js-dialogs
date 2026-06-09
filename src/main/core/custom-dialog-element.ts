@@ -35,6 +35,9 @@ class CustomDialogElement extends HTMLElement {
             <slot name="close-button"></slot>
           </div>
           <div class="body">
+            <div class="spinner">
+              <slot name="spinner" class="spinner"></slot>
+            </div>
             <slot name="intro" class="intro"></slot>
             <slot name="content" class="content"></slot>
             <slot name="extra-content" class="extra-content"></slot>

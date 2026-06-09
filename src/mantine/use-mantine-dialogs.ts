@@ -1,4 +1,4 @@
-import { Button, CloseButton } from '@mantine/core';
+import { Button, CloseButton, Loader } from '@mantine/core';
 import { useModals } from '@mantine/modals';
 import { createElement as h, useEffect, useState, Fragment, type ReactNode } from 'react';
 import { DefaultIconsPlugin } from '../main/plugins/default-icons.js';
@@ -96,6 +96,10 @@ function createMantineDialogAdapter(
             modals.closeModal(modalId);
           }),
       };
+    },
+
+    renderSpinner() {
+      return h(Loader, { size: 'lg', color: 'blue' });
     },
 
     renderForm(children, onSubmit) {

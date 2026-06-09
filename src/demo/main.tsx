@@ -298,7 +298,7 @@ function MantineDialogDemo() {
         </>
       ),
       buttonTexts: {
-        confirm: 'Save',
+        confirm: 'Save user profile',
       },
     });
     
@@ -306,9 +306,8 @@ function MantineDialogDemo() {
 
     if (!result.canceled) {
       console.log(result.data.toRecord())
+      await sleep(2000);
     }
-
-    await sleep(2000);
   })};
 
   return (

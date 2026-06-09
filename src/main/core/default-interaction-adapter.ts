@@ -36,6 +36,10 @@ const defaultDialogAdapter: InteractionAdapter<Node> = {
     };
   },
 
+  renderSpinner() {
+    return 'Loading....';
+  },
+
   renderForm(children, onSubmit) {
     const form = document.createElement('form');
     convertToNodes(children).forEach((child) => form.append(child));

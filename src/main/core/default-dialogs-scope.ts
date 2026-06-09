@@ -132,6 +132,8 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   #initialized = false;
   #closePrevious: (() => Promise<void>) | null = null;
   #autoCloseDialogs: boolean;
+  #dialogId = 'internal-dialog-' + Date.now();
+  #customDialogTagName = CustomDialogElement.prepare();
 
   constructor(
     closeOverlay: (() => Promise<void>) | null,
@@ -143,6 +145,19 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     this.#config = config;
     this.#adapter = adapter;
     this.#closePrevious = closeOverlay;
+
+    const spinner = this.#adapter.renderSpinner();
+
+    if (!this.#autoCloseDialogs) {
+      this.#adapter.openDialog!({
+        id: this.#dialogId,
+        cancel: () => {},
+        customDialogTagName: this.#customDialogTagName,
+        properties: {},
+        slotContents: [['spinner', spinner]],
+        styles: '',
+      });
+    }
 
     abortSignal?.addEventListener('abort', async () => {
       if (this.#closePrevious) {
@@ -257,12 +272,10 @@ class DefaultDialogScope<C> implements DialogScope<C> {
 
   async #openDialog(config: DialogConfig<C>): Promise<any> {
     let resolve: (value: any) => void;
-    const dialogId = 'internal-dialog-' + Date.now();
     const buttons = this.#getDialogButtons(config);
-    const customDialogTagName = CustomDialogElement.prepare();
 
     if (!this.#initialized) {
-      this.#initialize(customDialogTagName);
+      this.#initialize(this.#customDialogTagName);
     }
 
     await this.#closePreviousIfExisting();
@@ -271,7 +284,9 @@ class DefaultDialogScope<C> implements DialogScope<C> {
       let form: HTMLFormElement | null = null;
 
       if (config.allowsForm && buttonConfig.validate) {
-        form = document.querySelector<HTMLFormElement>(`#${dialogId} > [slot=content] > form`);
+        form = document.querySelector<HTMLFormElement>(
+          `#${this.#dialogId} > [slot=content] > form`
+        );
         form?.requestSubmit();
         const valid = form?.reportValidity() ?? true;
 
@@ -305,7 +320,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     const title = config.config.title ?? this.#getText(config.defaultTitle);
     slotContents.push(['title', title]);
 
-    for (const slot of ['subtitle', 'intro', 'content', 'outro']) {
+    for (const slot of ['subtitle', 'intro', 'content', 'outro', 'spinner']) {
       let children = (config.config as any)[slot];
 
       if (slot === 'content') {
@@ -353,10 +368,10 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     };
 
     const { closeDialog } = this.#adapter.openDialog!({
-      id: dialogId,
-      styles: this.#getStyles(dialogId, config),
-      customDialogTagName,
-      properties: { id: dialogId, 'data-dialog-type': config.dialogType, init },
+      id: this.#dialogId,
+      styles: this.#getStyles(this.#dialogId, config),
+      customDialogTagName: this.#customDialogTagName,
+      properties: { id: this.#dialogId, 'data-dialog-type': config.dialogType, init },
       slotContents: slotContents,
       cancel: () => {}, // TODO!!!!!!!
     });
