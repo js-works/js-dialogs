@@ -19,7 +19,6 @@ import type {
   WarnDialogResult,
 } from './exports.js';
 
-import { showOverlay } from './overlay.js';
 import { defaultDialogAdapter } from './default-interaction-adapter.js';
 import { DefaultDialogScope } from './default-dialogs-scope.js';
 
@@ -49,22 +48,10 @@ class DefaultDialogsController<C> implements DialogsController<C> {
     }
   }
 
-  async flow<T>(action: (scope: DialogScope<C>) => Promise<T>): Promise<T> {
-    //const closeOverlay = showOverlay();
+  open(): DialogScope<C> {
     const abortController = new AbortController();
 
-    const scope = new DefaultDialogScope(
-      () => Promise.resolve(undefined), //closeOverlay(true),
-      abortController.signal,
-      this.#config,
-      this.#adapter
-    );
-
-    try {
-      return await action(scope);
-    } finally {
-      abortController.abort();
-    }
+    return new DefaultDialogScope(false, abortController.signal, this.#config, this.#adapter);
   }
 
   info(config: InfoDialogConfig<C>): Promise<InfoDialogResult> {
@@ -108,6 +95,6 @@ class DefaultDialogsController<C> implements DialogsController<C> {
   }
 
   #createScope() {
-    return new DefaultDialogScope(null, null, this.#config, this.#adapter);
+    return new DefaultDialogScope(true, null, this.#config, this.#adapter);
   }
 }

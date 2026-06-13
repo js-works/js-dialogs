@@ -138,15 +138,15 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   #updateDialog: any = null; // TODO
 
   constructor(
-    closeOverlay: (() => Promise<void>) | null,
+    autoCloseDialogs: boolean,
     abortSignal: AbortSignal | null,
     config: DialogControllerConfig,
     adapter: InteractionAdapter<C>
   ) {
-    this.#autoCloseDialogs = !closeOverlay;
+    this.#autoCloseDialogs = autoCloseDialogs;
     this.#config = config;
     this.#adapter = adapter;
-    this.#closePrevious = closeOverlay;
+    this.#closePrevious = null;
 
     const spinner = this.#adapter.renderSpinner();
 
@@ -505,13 +505,17 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   }
 
   async #closePreviousIfExisting() {
+    // TODO
+    /*
     if (this.#closePrevious) {
       try {
         await this.#closePrevious();
       } finally {
         this.#closePrevious = null;
+        this.#updateDialog = null;
       }
     }
+    */
   }
 
   #getText(textKey: TextKey) {
@@ -558,5 +562,14 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     });
 
     return buttomElem;
+  }
+
+  [Symbol.dispose](): void {
+    if (!this.#closeDialog) {
+      return;
+    }
+
+    this.#closeDialog();
+    this.#closeDialog = null;
   }
 }

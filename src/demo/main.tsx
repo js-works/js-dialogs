@@ -40,31 +40,31 @@ document.querySelector<HTMLButtonElement>('#temp')!.onclick = async () => {
 };
 
 document.querySelector<HTMLButtonElement>('#temp2')!.onclick = async () => {
-  dialogs.flow(async (scope) => {
-    const confirmResult = await scope.confirmCritical({
-      title: 'Confirm deletion',
-      content: 'Are you really sure that the file should be deleted?',
-      buttonTexts: {
-        confirm: 'Delete File',
-      },
-    });
+  using scope = dialogs.open();
 
-    if (confirmResult.canceled) {
-      return;
-    }
-
-    await sleep(3000);
-
-    if (true) {
-      await scope.success({
-        content: 'File deleted successfully',
-      });
-    } else {
-      await scope.error({
-        content: 'File could not be deleted',
-      });
-    }
+  const confirmResult = await scope.confirmCritical({
+    title: 'Confirm deletion',
+    content: 'Are you really sure that the file should be deleted?',
+    buttonTexts: {
+      confirm: 'Delete File',
+    },
   });
+
+  if (confirmResult.canceled) {
+    return;
+  }
+
+  await sleep(3000);
+
+  if (true) {
+    await scope.success({
+      content: 'File deleted successfully',
+    });
+  } else {
+    await scope.error({
+      content: 'File could not be deleted',
+    });
+  }
 };
 
 document.querySelector<HTMLButtonElement>('#btn-info')!.onclick = async () => {
@@ -137,7 +137,8 @@ document.querySelector<HTMLButtonElement>('#btn-decide')!.onclick = async () => 
 };
 
 document.querySelector<HTMLButtonElement>('#btn-form')!.onclick = async () => {
-  dialogs.flow(async scope => {
+  using scope = dialogs.open();
+
   const result = await scope.form({
     title: 'Delete customer',
     content: toHtmlElement(html`
@@ -186,7 +187,6 @@ document.querySelector<HTMLButtonElement>('#btn-form')!.onclick = async () => {
     },
   });
 
-
   console.log(result);
 
   if (!result.canceled) {
@@ -197,7 +197,6 @@ document.querySelector<HTMLButtonElement>('#btn-form')!.onclick = async () => {
     return;
   }
   await sleep(2000)
-})
 };
 
 // === React /Mantine ================================================
@@ -278,9 +277,9 @@ function MantineDialogDemo() {
   };
 
   const onFormClick = async () => {
-    await dialogs.flow(async scope => {
+    using scope = dialogs.open();
 
-    await sleep(2000);
+    await sleep(1000);
     const userData: any = { 
       userNumber: 123,
       firstName: "Jane",
@@ -312,7 +311,7 @@ function MantineDialogDemo() {
         content: "User profile has been updated successfully."
       })
     }
-  })};
+  }
 
   return (
     <>

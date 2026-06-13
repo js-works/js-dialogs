@@ -133,10 +133,12 @@ interface DialogsFunctions<C> {
 }
 
 interface DialogsController<C> extends DialogsFunctions<C> {
-  flow<T>(action: (scope: DialogScope<C>) => Promise<T>): Promise<T>;
+  open(): DialogScope<C>;
 }
 
-interface DialogScope<C> extends DialogsFunctions<C> {}
+interface DialogScope<C> extends DialogsFunctions<C> {
+  [Symbol.dispose](): void;
+}
 
 type DialogResult<A extends string, T = null> =
   | {

@@ -146,8 +146,23 @@ function DialogContent({ params }: any) {
     h(
       'style',
       null,
-      `.${params.id} > .mantine-Modal-inner >  .mantine-Modal-content > .mantine-Modal-body { padding: 0; }
-            `,
+      `.${params.id} {
+        &:has([slot=spinner]:not(:empty)) > .mantine-Modal-inner > .mantine-Modal-content {
+          max-width: 5em;
+          max-height: 5em;
+          overflow: hidden;
+          border-radius: 50%;    
+          box-sizing: border-box;
+          margin: 0;
+          padding: 9;
+        }
+
+        & > .mantine-Modal-inner >  .mantine-Modal-content {
+          & > .mantine-Modal-body {
+            padding: 0;
+          }
+        }
+      }`,
       params.styles
     ),
     content
