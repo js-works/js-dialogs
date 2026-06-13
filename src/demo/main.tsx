@@ -307,6 +307,10 @@ function MantineDialogDemo() {
     if (!result.canceled) {
       console.log(result.data.toRecord())
       await sleep(2000);
+      
+      await scope.success({
+        content: "User profile has been updated successfully."
+      })
     }
   })};
 

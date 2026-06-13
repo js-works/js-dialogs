@@ -34,53 +34,18 @@ function createMantineDialogAdapter(
 ): InteractionAdapter<ReactNode> {
   return {
     openDialog(params) {
-      const slots = [] as any;
-
-      params.slotContents.forEach((entry: any, idx: number) => {
-        slots.push(
-          h('div', { slot: entry[0], key: `${entry[0]}-${idx}` }, convertToReactNode(entry[1]))
-        );
-      });
-
-      let setInnerContent: any;
-
-      function DialogContent() {
-        let content: any;
-        [content, setInnerContent] = useState(() =>
-          h(params.customDialogTagName, { useNativeDialog: false, ...params.properties }, slots)
-        );
-
-        return h(
-          'div',
-          null,
-          h(
-            'style',
-            null,
-            `.${params.id} > .mantine-Modal-inner >  .mantine-Modal-content > .mantine-Modal-body { padding: 0; }
-            `,
-            params.styles
-          ),
-          content
-        );
-      }
-
       const modalId = modals.openModal({
         className: params.id,
         withCloseButton: false,
-        children: h(DialogContent),
+        children: h(DialogContent as any, { params }),
       });
 
       return {
-        updateDialog: (slotContents, properties) => {
-          const slots = [] as any;
-
-          slotContents.forEach((entry: any, idx: number) => {
-            slots.push(h('div', { slot: entry[0], key: `${entry[0]}-${idx}` }, entry[1]));
+        updateDialog: (params) => {
+          modals.updateModal({
+            modalId,
+            children: h(DialogContent as any, { key: Math.random(), params }),
           });
-
-          setContent(
-            h(params.customDialogTagName, { useNativeDialog: false, ...properties }, slots)
-          );
         },
 
         closeDialog: () =>
@@ -157,4 +122,34 @@ function convertToReactNode(content: ReactNode): ReactNode {
   }
 
   return content;
+}
+
+function DialogContent({ params }: any) {
+  // TODO
+  let content: any;
+
+  [content] = useState(() => {
+    const slots = [] as any;
+
+    params.slotContents.forEach((entry: any, idx: number) => {
+      slots.push(
+        h('div', { slot: entry[0], key: `${entry[0]}-${idx}` }, convertToReactNode(entry[1]))
+      );
+    });
+
+    return h(params.customDialogTagName, { useNativeDialog: false, ...params.properties }, slots);
+  });
+
+  return h(
+    'div',
+    null,
+    h(
+      'style',
+      null,
+      `.${params.id} > .mantine-Modal-inner >  .mantine-Modal-content > .mantine-Modal-body { padding: 0; }
+            `,
+      params.styles
+    ),
+    content
+  );
 }

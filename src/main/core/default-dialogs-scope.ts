@@ -134,6 +134,8 @@ class DefaultDialogScope<C> implements DialogScope<C> {
   #autoCloseDialogs: boolean;
   #dialogId = 'internal-dialog-' + Date.now();
   #customDialogTagName = CustomDialogElement.prepare();
+  #closeDialog: any = null; // TODO
+  #updateDialog: any = null; // TODO
 
   constructor(
     closeOverlay: (() => Promise<void>) | null,
@@ -149,7 +151,7 @@ class DefaultDialogScope<C> implements DialogScope<C> {
     const spinner = this.#adapter.renderSpinner();
 
     if (!this.#autoCloseDialogs) {
-      this.#adapter.openDialog!({
+      const { closeDialog, updateDialog } = this.#adapter.openDialog!({
         id: this.#dialogId,
         cancel: () => {},
         customDialogTagName: this.#customDialogTagName,
@@ -157,6 +159,9 @@ class DefaultDialogScope<C> implements DialogScope<C> {
         slotContents: [['spinner', spinner]],
         styles: '',
       });
+
+      this.#updateDialog = updateDialog;
+      this.#closeDialog = closeDialog;
     }
 
     abortSignal?.addEventListener('abort', async () => {
@@ -298,9 +303,9 @@ class DefaultDialogScope<C> implements DialogScope<C> {
       }
 
       if (this.#autoCloseDialogs) {
-        await closeDialog();
+        await this.#closeDialog();
       } else {
-        this.#closePrevious = closeDialog;
+        this.#closePrevious = this.#closeDialog;
       }
 
       this.#finish(buttonConfig.id, config.dialogType, form, resolve);
@@ -367,14 +372,28 @@ class DefaultDialogScope<C> implements DialogScope<C> {
       }
     };
 
-    const { closeDialog } = this.#adapter.openDialog!({
-      id: this.#dialogId,
-      styles: this.#getStyles(this.#dialogId, config),
-      customDialogTagName: this.#customDialogTagName,
-      properties: { id: this.#dialogId, 'data-dialog-type': config.dialogType, init },
-      slotContents: slotContents,
-      cancel: () => {}, // TODO!!!!!!!
-    });
+    if (!this.#updateDialog) {
+      const { closeDialog, updateDialog } = this.#adapter.openDialog!({
+        id: this.#dialogId,
+        styles: this.#getStyles(this.#dialogId, config),
+        customDialogTagName: this.#customDialogTagName,
+        properties: { id: this.#dialogId, 'data-dialog-type': config.dialogType, init },
+        slotContents: slotContents,
+        cancel: () => {}, // TODO!!!!!!!
+      });
+
+      this.#updateDialog = updateDialog;
+      this.#closeDialog = closeDialog;
+    } else {
+      this.#updateDialog({
+        id: this.#dialogId,
+        styles: this.#getStyles(this.#dialogId, config),
+        customDialogTagName: this.#customDialogTagName,
+        properties: { id: this.#dialogId, 'data-dialog-type': config.dialogType, init },
+        slotContents: slotContents,
+        cancel: () => {}, // TODO!!!!!!!
+      });
+    }
 
     return new Promise((res) => {
       resolve = res;
